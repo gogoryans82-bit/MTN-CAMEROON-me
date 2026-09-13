@@ -1,6 +1,6 @@
 {
   "name": "mtn-momo-cameroon-backend",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -13,6 +13,7 @@
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "pdfkit": "^0.14.0",
     "pg": "^8.11.3"
