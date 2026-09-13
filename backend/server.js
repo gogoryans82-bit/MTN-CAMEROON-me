@@ -28,10 +28,16 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrcAttr: ["'unsafe-inline'"],       // ← FIX: allow inline onclick handlers
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            styleSrcAttr: ["'unsafe-inline'"],        // ← allow inline style="" too
             fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-            imgSrc: ["'self'", "data:"],
-            connectSrc: ["'self'"]
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"]
         }
     },
     crossOriginEmbedderPolicy: false,
